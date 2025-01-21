@@ -1,7 +1,7 @@
 #include "mc.h"
+#include "zlib-utils.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <zlib.h>
 
 int main() {
   char TEST_PATH[] =
@@ -35,15 +35,34 @@ int main() {
 
   fseek(fptr, chunk.offset * SECTOR_SIZE, SEEK_SET);
 
-  unsigned char payload_head[5];
-  if (fread(&payload_head, sizeof(payload_head), 1, fptr) != 1) {
-    printf("Error reading payload");
+  int compressed_data_len;
+  int compression_type;
+  if (fread(&compressed_data_len, sizeof(compressed_data_len), 1, fptr) != 1) {
+    printf("Error reading payload len");
+    exit(1);
+  }
+  if (fread(&compression_type, 1, 1, fptr) != 1) {
+    printf("Error reading payload len");
+    exit(1);
+  }
+  compressed_data_len = ntohl(compressed_data_len);
+
+  printf("\n Compression type: %d, len: %d", compression_type,
+         compressed_data_len);
+  unsigned char *comp_data = malloc(compressed_data_len - 1);
+
+  if (fread(comp_data, compressed_data_len - 1, 1, fptr) != 1) {
+    printf("Error reading payload content");
     exit(1);
   }
 
-  int comp_type = payload_head[4];
-  printf("\n Compression type: %d", comp_type);
+  size_t uncomp_len = 0;
+  unsigned char *uncomp_data =
+      decompress_zlib(comp_data, compressed_data_len - 1, &uncomp_len);
 
+  if (uncomp_data) {
+    printf("\n Success uncompressing data len: %zu", uncomp_len);
+  }
   printf("\nSuccess reading j");
   /* printf("\n Total sectors: %d", total_sector_count); */
   return 0;
