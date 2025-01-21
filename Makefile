@@ -1,10 +1,27 @@
-CC=clang
-CFLAGS=-I.
-DEPS = mc.h
-OBJ = main.o mc.o 
+CC = clang
+CFLAGS = -I.
 
-%.o: %.c $(DEPS)
+BUILD_DIR = build
+
+DEPS = mc.h
+SRC = $(wildcard *.c)
+OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
+
+# Default target
+all: $(BUILD_DIR)/main
+
+# Create the build directory if it doesn't exist
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Pattern rule for building object files in the build directory
+$(BUILD_DIR)/%.o: %.c $(DEPS) | $(BUILD_DIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-main: $(OBJ)
+# Build the main executable in the build directory
+$(BUILD_DIR)/main: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
+
+# Clean command
+clean:
+	rm -rf $(BUILD_DIR)
