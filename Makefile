@@ -1,9 +1,10 @@
 CC = clang
 CFLAGS = -I.
+LDFLAGS = -lz
 
 BUILD_DIR = build
 
-DEPS = mc.h
+DEPS = mc.h zlib-utils.h
 SRC = $(wildcard *.c)
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
@@ -20,7 +21,7 @@ $(BUILD_DIR)/%.o: %.c $(DEPS) | $(BUILD_DIR)
 
 # Build the main executable in the build directory
 $(BUILD_DIR)/main: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 # Clean command
 clean:
