@@ -109,3 +109,38 @@ unsigned char *decompress_zlib(const unsigned char *compressed_data,
   free_blocks(head);
   return combined_data;
 }
+
+unsigned char *compress_zlib(const unsigned char *data, size_t size,
+                             size_t *out_size) {
+  z_stream stream;
+
+  unsigned char *buffer = malloc(size);
+  if (buffer == NULL) {
+    fprintf(stderr, "Failed to allocate buffer for data compression");
+    exit(1);
+  }
+
+  stream.zalloc = Z_NULL;
+  stream.zfree = Z_NULL;
+  stream.opaque = Z_NULL;
+  stream.avail_in = size;
+  stream.next_in = (Bytef *)data;
+  stream.avail_out = size;
+  stream.next_out = buffer;
+
+  if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK) {
+    fprintf(stderr, "DeflateInit failed\n");
+    exit(1);
+  }
+  if (deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+    fprintf(stderr, "Deflate failed\n");
+    exit(1);
+  }
+  if (deflateEnd(&stream) != Z_OK) {
+    fprintf(stderr, "DeflateEnd failed\n");
+    exit(1);
+  }
+
+  *out_size = stream.total_out;
+  return buffer;
+}

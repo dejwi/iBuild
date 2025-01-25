@@ -20,6 +20,14 @@ typedef struct {
   char name[40];
 } nbt_helper_t;
 
+typedef struct insert_data_t {
+  size_t start_offset;
+  size_t end_offset;
+  unsigned char *data_insert;
+  size_t data_size;
+  struct insert_data_t *next;
+} insert_data_t;
+
 extern const nbt_helper_t TAG_END;
 extern const nbt_helper_t TAG_BYTE;
 extern const nbt_helper_t TAG_SHORT;
@@ -40,8 +48,20 @@ void create_chunk_location(chunk_location_raw_t *from, chunk_location_t *to);
 
 int get_chunk_offset_in_header(int x, int z);
 
-unsigned char *find_data_by_tag_name(char *tag_name, unsigned char *data,
-                                     size_t data_len);
+unsigned char *find_data_tag_comp(const char *tag_name,
+                                  const unsigned char *data);
 
-size_t resolve_tag_end_offset(unsigned char *data,
+size_t resolve_tag_end_offset(const unsigned char *data,
                               const nbt_helper_t *start_from_tag);
+
+unsigned short get_ushort_le(const unsigned char *data);
+
+int get_int_le(const unsigned char *data);
+
+size_t print_comp_fields(const unsigned char *data, int nest_depth);
+
+unsigned char *insert_data(const unsigned char *data, size_t size,
+                           insert_data_t *payload, size_t *out_size);
+
+void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
+                     int y_section, char *block_from, char *block_to);
