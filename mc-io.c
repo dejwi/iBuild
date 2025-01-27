@@ -9,6 +9,17 @@ void create_chunk_location(const chunk_location_raw_t *from,
   to->sector_count = from->sector_count;
 }
 
+void append_insert_list(insert_data_t **head, insert_data_t **tail,
+                        insert_data_t *add) {
+  if (*head == NULL) {
+    *head = add;
+    *tail = add;
+  } else {
+    (*tail)->next = add;
+    *tail = add;
+  }
+}
+
 unsigned char *insert_data(const unsigned char *data, size_t size,
                            const insert_data_t *payload, size_t *out_size) {
   int total_size_diff = 0;

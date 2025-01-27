@@ -7,7 +7,7 @@ int main() {
       "/Users/dawid/Library/Application "
       "Support/PrismLauncher/instances/Light-Craft---1.19.3---4.6.3/minecraft/"
       "saves/testc/region/r.0.0.mca";
-  char *wool = "minecraft:brown_wool";
+  char *wool = "minecraft:yellow_wool";
   int ind[] = {
       0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,  0,  -1, -1, 0,  0,  -1, -1,
