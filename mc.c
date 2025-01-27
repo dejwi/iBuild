@@ -274,25 +274,24 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
   return buffer;
 }
 
-void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
-                     int y_section, char *block_from, char *block_to) {
+void load_chunk_data(const char *region_path, size_t header_offset,
+                     chunk_location_t *out_loc, size_t *out_size,
+                     unsigned char **out_data) {
   FILE *fRegion;
   // Open a file in read mode
   fRegion = fopen(region_path, "rb");
 
-  size_t chunk_header_offset = 4 * ((x_chunk & 31) + (z_chunk & 31) * 32);
   chunk_location_raw_t chunk_loc_raw;
-  chunk_location_t chunk_loc;
   insert_data_t *edit_list = NULL;
 
-  fseek(fRegion, chunk_header_offset, SEEK_SET);
+  fseek(fRegion, header_offset, SEEK_SET);
   if (fread(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion) != 1) {
     fprintf(stderr, "Error reading\n");
     exit(1);
   }
-  create_chunk_location(&chunk_loc_raw, &chunk_loc);
+  create_chunk_location(&chunk_loc_raw, out_loc);
 
-  fseek(fRegion, chunk_loc.offset * SECTOR_SIZE, SEEK_SET);
+  fseek(fRegion, out_loc->offset * SECTOR_SIZE, SEEK_SET);
 
   int comp_data_size = 0;
   int comp_type = 0;
@@ -328,6 +327,60 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     fprintf(stderr, "Error uncompressing data\n");
     exit(1);
   }
+
+  *out_data = uncomp_data;
+  *out_size = uncomp_size;
+
+  free(comp_data);
+}
+
+void write_chunk_data(const char *region_path, chunk_location_t *chunk_loc,
+                      insert_data_t *edit_list, const unsigned char *data,
+                      size_t data_size) {
+
+  if (edit_list == NULL)
+    return;
+
+  size_t new_uncomp_size = 0;
+  unsigned char *new_uncomp_data =
+      insert_data(data, data_size, edit_list, &new_uncomp_size);
+
+  printf("%lu == %lu\n", data_size, new_uncomp_size);
+
+  size_t new_comp_size = 0;
+  unsigned char *new_comp_data =
+      compress_zlib(new_uncomp_data, new_uncomp_size, &new_comp_size);
+
+  /* printf("after comp %d == %lu\n", comp_data_size, new_comp_size); */
+  FILE *fRegion = fopen(region_path, "r+b");
+  fseek(fRegion, chunk_loc->offset * SECTOR_SIZE, SEEK_SET);
+
+  // account for compression byte
+  int new_size = htonl(new_comp_size + 1);
+  printf("newsize: %d\n", new_size);
+  fwrite(&new_size, 4, 1, fRegion);
+
+  // move over compression type byte
+  fseek(fRegion, 1, SEEK_CUR);
+
+  fwrite(new_comp_data, new_comp_size, 1, fRegion);
+  fclose(fRegion);
+
+  free(new_uncomp_data);
+  free(new_comp_data);
+}
+
+void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
+                     int y_section, char *block_from, char *block_to) {
+  size_t chunk_header_offset = 4 * ((x_chunk & 31) + (z_chunk & 31) * 32);
+  chunk_location_t chunk_loc;
+  insert_data_t *edit_list = NULL;
+
+  unsigned char *uncomp_data;
+  size_t uncomp_size = 0;
+
+  load_chunk_data(region_path, chunk_header_offset, &chunk_loc, &uncomp_size,
+                  &uncomp_data);
 
   unsigned char *sections = find_data_tag_comp("sections", uncomp_data + 3);
   assert(sections != NULL);
@@ -371,13 +424,6 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
             size_t name_offset = name_el - uncomp_data;
             printf("Found block at %lu\n", name_offset);
 
-            char *name_test = malloc(name_len + 1);
-            memcpy(name_test, uncomp_data + name_offset + 2, name_len);
-            name_test[name_len] = '\0';
-            printf("Test = %s, matches = %d\n", name_test,
-                   strcmp(name_test, name));
-            free(name_test);
-
             if (edit_list != NULL) {
               // temp
               free(edit_list->data_insert);
@@ -407,40 +453,9 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     s_offset += el_end_offset;
   }
 
-  if (edit_list == NULL)
-    return;
+  write_chunk_data(region_path, &chunk_loc, edit_list, uncomp_data,
+                   uncomp_size);
 
-  size_t new_uncomp_size = 0;
-  unsigned char *new_uncomp_data =
-      insert_data(uncomp_data, uncomp_size, edit_list, &new_uncomp_size);
-
-  printf("%lu == %lu\n", uncomp_size, new_uncomp_size);
-
-  size_t new_comp_size = 0;
-  unsigned char *new_comp_data =
-      compress_zlib(new_uncomp_data, new_uncomp_size, &new_comp_size);
-
-  size_t test = 0;
-  decompress_zlib(new_comp_data, new_comp_size, &test);
-  printf("test val: %zu\n", test);
-
-  printf("after comp %d == %lu\n", comp_data_size, new_comp_size);
-  fRegion = fopen(region_path, "r+b");
-  fseek(fRegion, chunk_loc.offset * SECTOR_SIZE, SEEK_SET);
-
-  // account for compression byte
-  int new_size = htonl(new_comp_size + 1);
-  printf("newsize: %d\n", new_size);
-  fwrite(&new_size, 4, 1, fRegion);
-  // move over compression type byte
-  fseek(fRegion, 1, SEEK_CUR);
-
-  fwrite(new_comp_data, new_comp_size, 1, fRegion);
-  fclose(fRegion);
-
-  free(new_uncomp_data);
-  free(new_comp_data);
-  free(comp_data);
   free(uncomp_data);
 
   // add free edit list
