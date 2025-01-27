@@ -28,6 +28,22 @@ typedef struct insert_data_t {
   struct insert_data_t *next;
 } insert_data_t;
 
+typedef struct {
+  int x;
+  int y;
+  int z;
+} vector3_t;
+
+typedef struct {
+  int x_size;
+  int y_size;
+  int z_size;
+  vector3_t chunk_pos;
+  char **palette;
+  int palette_len;
+  int *indices;
+} block_build_t;
+
 extern const nbt_helper_t TAG_END;
 extern const nbt_helper_t TAG_BYTE;
 extern const nbt_helper_t TAG_SHORT;
@@ -64,4 +80,4 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
                            insert_data_t *payload, size_t *out_size);
 
 void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
-                     int y_section, char *block_from, char *block_to);
+                     const block_build_t *build);
