@@ -18,6 +18,13 @@ void append_insert_list(insert_data_t **head, insert_data_t **tail,
     (*tail)->next = add;
     *tail = add;
   }
+  if (add->next != NULL) {
+    insert_data_t *temp = add->next;
+    while (temp->next != NULL) {
+      temp = temp->next;
+    }
+    *tail = temp;
+  }
 }
 
 unsigned char *insert_data(const unsigned char *data, size_t size,
@@ -28,6 +35,7 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
 
   const insert_data_t *temp = payload;
   while (temp) {
+    printf("insert off: %zu\n", temp->start_offset);
     total_size_diff +=
         temp->start_offset - temp->end_offset + temp->data_size - 1;
 

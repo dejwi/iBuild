@@ -9,20 +9,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-insert_data_t *handle_palette(const unsigned char *block_states,
-                              const block_build_t *build,
-                              const unsigned char *uncomp_data,
-                              int **out_mapped_palette_idxs,
-                              int *out_palette_len) {
+insert_data_t *
+handle_palette(const unsigned char *block_states, const block_build_t *build,
+               const unsigned char *uncomp_data, int *out_mapped_palette_idxs,
+               int *out_palette_len, size_t *out_palette_end_offset) {
   insert_data_t *head = NULL;
   insert_data_t *tail = NULL;
   // Fill with empty
   for (int i = 0; i < build->palette_len; i++) {
-    *out_mapped_palette_idxs[i] = -1;
+    out_mapped_palette_idxs[i] = -1;
   }
   unsigned char *palette = find_data_tag_comp("palette", block_states);
   assert(palette != NULL);
 
+  printf("test\n");
   int palette_len = get_int_le(palette + 1);
   *out_palette_len = palette_len;
   printf("palette len: %d\n", palette_len);
@@ -45,7 +45,7 @@ insert_data_t *handle_palette(const unsigned char *block_states,
     // Fill in already existing blocks
     for (int k = 0; k < build->palette_len; k++) {
       if (strcmp(name, build->palette[k]) == 0) {
-        *out_mapped_palette_idxs[k] = j;
+        out_mapped_palette_idxs[k] = j;
         break;
       }
     }
@@ -54,13 +54,14 @@ insert_data_t *handle_palette(const unsigned char *block_states,
     palette_item_offset +=
         resolve_tag_end_offset(palette + palette_item_offset, &TAG_COMPOUND);
   }
+  *out_palette_end_offset = (palette + palette_item_offset) - uncomp_data;
 
   char **items_to_add = malloc(build->palette_len * sizeof(char *));
   int items_to_add_size = 0;
 
   // Check if there are blocks not already present in the palette
   for (int j = 0; j < build->palette_len; j++) {
-    if (*out_mapped_palette_idxs[j] == -1) {
+    if (out_mapped_palette_idxs[j] == -1) {
       items_to_add[items_to_add_size] = build->palette[j];
       items_to_add_size++;
     }
@@ -147,7 +148,7 @@ insert_data_t *handle_palette(const unsigned char *block_states,
 
     for (int k = 0; k < build->palette_len; k++) {
       if (strcmp(items_to_add[j], build->palette[k]) == 0)
-        *out_mapped_palette_idxs[k] = palette_len + j;
+        out_mapped_palette_idxs[k] = palette_len + j;
     }
   }
 
@@ -203,27 +204,78 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     assert(block_states != NULL);
 
     // Handle palette changes
-    int *mapped_palette_idxs = malloc(build->palette_len * sizeof(char *));
+    int *mapped_palette_idxs = malloc(build->palette_len * sizeof(int));
     int palette_len = 0;
+    size_t palette_end_offset = 0;
 
-    insert_data_t *edit_palette = handle_palette(
-        block_states, build, uncomp_data, &mapped_palette_idxs, &palette_len);
-    append_insert_list(&edit_head, &edit_tail, edit_palette);
+    insert_data_t *edit_palette =
+        handle_palette(block_states, build, uncomp_data, mapped_palette_idxs,
+                       &palette_len, &palette_end_offset);
+    if (edit_palette != NULL)
+      append_insert_list(&edit_head, &edit_tail, edit_palette);
 
     // Should be all filled by now
     for (int i = 0; i < build->palette_len; i++)
       assert(mapped_palette_idxs[i] != -1);
 
-    // TODO: when theres only one block in a chunk theres no indices field
-    unsigned char *indicies_data = find_data_tag_comp("data", block_states);
-    assert(indicies_data != NULL);
-
-    int indicies_len = get_int_le(indicies_data);
-    printf("indicies len: %d\n", indicies_len);
-
     int bits = count_min_bits(palette_len - 1);
     if (bits < 4)
       bits = 4;
+
+    // TODO: when theres only one block in a chunk theres no indices field
+    unsigned char *indices_el = find_data_tag_comp("data", block_states);
+    if (indices_el == NULL) {
+      printf("Creating indices\n");
+      size_t block_states_end_offset =
+          resolve_tag_end_offset(block_states, &TAG_COMPOUND);
+      block_states_end_offset =
+          (block_states + block_states_end_offset) - uncomp_data;
+
+      char *tag_name = "data";
+      unsigned short tag_name_len = strlen(tag_name);
+      unsigned short tag_name_len_be = htons(tag_name_len);
+
+      int len = 4096 / (64 / bits);
+      int len_be = htonl(len);
+      int total_indices_size =
+          1 + 2 + tag_name_len + 4 + len * TAG_LONG.payload_size + 1;
+      unsigned char *new_indices = calloc(1, total_indices_size);
+
+      int indices_offset = 0;
+      memcpy(new_indices, &TAG_LONG_ARRAY.id, 1);
+      indices_offset++;
+
+      memcpy(new_indices + indices_offset, &tag_name_len_be, 2);
+      indices_offset += 2;
+      memcpy(new_indices + indices_offset, tag_name, tag_name_len);
+      indices_offset += tag_name_len;
+
+      memcpy(new_indices + indices_offset, &len_be, 4);
+      indices_offset += 4;
+      indices_offset += len * TAG_LONG.payload_size;
+
+      // copy over last byte from block_states at the end
+      memcpy(new_indices + indices_offset,
+             uncomp_data + block_states_end_offset - 1, 1);
+      printf("last byte: %d\n", (uncomp_data + block_states_end_offset - 1)[0]);
+      printf("last byte2: %d\n", (uncomp_data + block_states_end_offset)[0]);
+      printf("%d == %d\n", total_indices_size, indices_offset + 1);
+
+      insert_data_t *edit_indices = malloc(sizeof(insert_data_t));
+      edit_indices->next = NULL;
+      edit_indices->data_size = total_indices_size;
+      edit_indices->data_insert = new_indices;
+      edit_indices->start_offset = block_states_end_offset - 1;
+      edit_indices->end_offset = edit_indices->start_offset;
+
+      append_insert_list(&edit_head, &edit_tail, edit_indices);
+
+      indices_el = new_indices + 1 + 2 + tag_name_len;
+    }
+    assert(indices_el != NULL);
+
+    int indicies_len = get_int_le(indices_el);
+    printf("indicies len: %d\n", indicies_len);
 
     for (int y = 0; y < build->y_size; y++) {
       for (int z = 0; z < build->z_size; z++) {
@@ -247,7 +299,7 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
           int idx = ch_pos / (64 / bits);
           int64_t block = 0;
 
-          memcpy(&block, indicies_data + 4 + idx * 8, 8);
+          memcpy(&block, indices_el + 4 + idx * 8, 8);
           block = *(int64_t *)reverse_endian(&block, 8);
 
           int bit_offset = (ch_pos % (64 / bits) * bits);
@@ -258,7 +310,7 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
           block = (block & (~bit_mask)) | (build_block << bit_offset);
 
           block = *(int64_t *)reverse_endian(&block, 8);
-          memcpy(indicies_data + 4 + idx * 8, &block, 8);
+          memcpy(indices_el + 4 + idx * 8, &block, 8);
         }
       }
     }
