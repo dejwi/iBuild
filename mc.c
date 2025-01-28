@@ -168,12 +168,7 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
   unsigned char *uncomp_data;
   size_t uncomp_size = 0;
   int min_y_sc = build->chunk_pos.y / 16;
-  int max_y_sc = (build->y_size + build->chunk_pos.y) / 16;
-  // temporary as different sections are not impl
-  assert(min_y_sc == max_y_sc);
-
-  int y_section = max_y_sc;
-  printf("ysec: %d\n", y_section);
+  int max_y_sc = (build->y_size + build->chunk_pos.y - 1) / 16;
 
   load_chunk_data(region_path, chunk_header_offset, &chunk_loc, &uncomp_size,
                   &uncomp_data);
@@ -197,9 +192,10 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     assert(y_pos_el != NULL);
     int y_pos = ((char *)y_pos_el)[0];
 
-    if (y_pos != y_section)
+    if (y_pos < min_y_sc || y_pos > max_y_sc)
       continue;
 
+    printf("Editing y_section:%d\n", y_pos);
     unsigned char *block_states = find_data_tag_comp("block_states", s_item);
     assert(block_states != NULL);
 
@@ -222,7 +218,6 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     if (bits < 4)
       bits = 4;
 
-    // TODO: when theres only one block in a chunk theres no indices field
     unsigned char *indices_el = find_data_tag_comp("data", block_states);
     if (indices_el == NULL) {
       printf("Creating indices\n");
@@ -277,9 +272,17 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     int indicies_len = get_int_le(indices_el);
     printf("indicies len: %d\n", indicies_len);
 
+    int min_y = y_pos * 16;
+    int max_y = ((y_pos + 1) * 16) - 1;
+
     for (int y = 0; y < build->y_size; y++) {
       for (int z = 0; z < build->z_size; z++) {
         for (int x = 0; x < build->x_size; x++) {
+          int actual_y = y + build->chunk_pos.y;
+          // Check if belongs to this section
+          if (actual_y < min_y || actual_y > max_y)
+            continue;
+
           int build_pos =
               y * build->x_size * build->z_size + z * build->x_size + x;
           int indc = build->indices[build_pos];
@@ -288,7 +291,7 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
             continue;
           int64_t build_block = mapped_palette_idxs[indc];
 
-          int ch_y = y + build->chunk_pos.y % 16;
+          int ch_y = actual_y % 16;
           int ch_z = z + build->chunk_pos.z;
           int ch_x = x + build->chunk_pos.x;
 
