@@ -12,7 +12,7 @@ typedef struct {
   int x_size;
   int y_size;
   int z_size;
-  vector3_t chunk_pos;
+  vector3_t pos;
   char **palette;
   int palette_len;
   int *indices;

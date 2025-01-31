@@ -1,0 +1,5 @@
+[tool.pyright]
+executionEnvironments = [{ root = "py-ui" }]
+typeCheckingMode = "standard"
+venv = ".venv"
+venvPath = "."

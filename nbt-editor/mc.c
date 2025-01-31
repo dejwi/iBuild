@@ -167,8 +167,8 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
   unsigned char *uncomp_data;
   size_t uncomp_size = 0;
-  int min_y_sc = build->chunk_pos.y / 16;
-  int max_y_sc = (build->y_size + build->chunk_pos.y - 1) / 16;
+  int min_y_sc = build->pos.y / 16;
+  int max_y_sc = (build->y_size + build->pos.y - 1) / 16;
 
   load_chunk_data(region_path, chunk_header_offset, &chunk_loc, &uncomp_size,
                   &uncomp_data);
@@ -275,12 +275,24 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     int min_y = y_pos * 16;
     int max_y = ((y_pos + 1) * 16) - 1;
 
+    int min_z = z_chunk * 16;
+    int max_z = ((z_chunk + 1) * 16) - 1;
+
+    int min_x = x_chunk * 16;
+    int max_x = ((x_chunk + 1) * 16) - 1;
+
     for (int y = 0; y < build->y_size; y++) {
       for (int z = 0; z < build->z_size; z++) {
         for (int x = 0; x < build->x_size; x++) {
-          int actual_y = y + build->chunk_pos.y;
+          int actual_y = y + build->pos.y;
+          int actual_z = z + build->pos.z;
+          int actual_x = x + build->pos.x;
           // Check if belongs to this section
           if (actual_y < min_y || actual_y > max_y)
+            continue;
+          if (actual_z < min_z || actual_z > max_z)
+            continue;
+          if (actual_x < min_x || actual_x > max_x)
             continue;
 
           int build_pos =
@@ -292,8 +304,8 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
           int64_t build_block = mapped_palette_idxs[indc];
 
           int ch_y = actual_y % 16;
-          int ch_z = z + build->chunk_pos.z;
-          int ch_x = x + build->chunk_pos.x;
+          int ch_z = actual_z % 16;
+          int ch_x = actual_x % 16;
 
           int ch_pos = ch_y * 16 * 16 + ch_z * 16 + ch_x;
 
@@ -324,6 +336,5 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
                    uncomp_size);
 
   free(uncomp_data);
-
-  // add free edit list
+  free_insert_list(edit_head);
 }

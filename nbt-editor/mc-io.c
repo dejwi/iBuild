@@ -27,6 +27,15 @@ void append_insert_list(insert_data_t **head, insert_data_t **tail,
   }
 }
 
+void free_insert_list(insert_data_t *head) {
+  while (head != NULL) {
+    free(head->data_insert);
+    insert_data_t *temp = head;
+    head = head->next;
+    free(temp);
+  }
+}
+
 unsigned char *insert_data(const unsigned char *data, size_t size,
                            const insert_data_t *payload, size_t *out_size) {
   int total_size_diff = 0;

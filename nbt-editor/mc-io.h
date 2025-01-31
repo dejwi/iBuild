@@ -26,6 +26,8 @@ void create_chunk_location(const chunk_location_raw_t *from,
 void append_insert_list(insert_data_t **head, insert_data_t **tail,
                         insert_data_t *add);
 
+void free_insert_list(insert_data_t *head);
+
 unsigned char *insert_data(const unsigned char *data, size_t size,
                            const insert_data_t *payload, size_t *out_size);
 
