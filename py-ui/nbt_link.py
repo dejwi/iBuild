@@ -1,6 +1,7 @@
 import ctypes
 import os
 import re
+import sys
 
 import pyjson5
 
@@ -23,7 +24,30 @@ class BlockBuild(ctypes.Structure):
 
 
 # Load the shared library.
-lib_path = os.path.join(os.path.dirname(__file__), "../nbt-editor/build", "libmc.so")
+if sys.platform.startswith("win"):
+    lib_path = "./nbt-editor/build/libmc.dll"
+else:
+    lib_path = "./nbt-editor/build/libmc.so"
+
+if getattr(sys, "frozen", False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app
+    # path into variable _MEIPASS'.
+    if sys.platform.startswith("win"):
+        lib_path = os.path.join(sys._MEIPASS, "nbt-editor/build/libmc.dll")  # type: ignore
+    else:
+        lib_path = os.path.join(sys._MEIPASS, "nbt-editor/build/libmc.so")  # type: ignore
+else:
+    if sys.platform.startswith("win"):
+        lib_path = os.path.join(
+            os.path.dirname(__file__), "../nbt-editor/build/libmc.dll"
+        )
+    else:
+        lib_path = os.path.join(
+            os.path.dirname(__file__), "../nbt-editor/build/libmc.so"
+        )
+
+
 libmc = ctypes.CDLL(lib_path)
 
 # Set the argument types and return type for test_chunk_edit.

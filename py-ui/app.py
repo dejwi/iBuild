@@ -18,34 +18,34 @@ AI_PRESETS = [
         "text": "Custom",
         "subtext": "",
         "llm": {
-            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
-            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
             "cpu_threads": 10,
-            "gpu_layers": 46,
+            "gpu_layers": 49,
         },
     },
     {
-        "text": "24gb RAM, 10gb VRAM",
+        "text": "16gb RAM | 10gb VRAM",
         "subtext": "32b IQ4_S",
         "llm": {
-            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
-            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
             "cpu_threads": 10,
-            "gpu_layers": 46,
+            "gpu_layers": 49,
         },
     },
     {
-        "text": "16gb RAM, 8gb GB",
-        "subtext": "balanced",
+        "text": "16gb RAM | 8gb VRAM",
+        "subtext": "32b IQ4_S",
         "llm": {
-            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
-            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
-            "cpu_threads": 8,
-            "gpu_layers": 46,
+            "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
+            "cpu_threads": 10,
+            "gpu_layers": 39,
         },
     },
     {
-        "text": "16gb RAM, +-6gb VRAM",
+        "text": "16gb RAM | +-6gb VRAM",
         "subtext": "7b Q4_K_M - mostly bad results",
         "llm": {
             "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
@@ -222,12 +222,6 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             action_frame, orient=tk.HORIZONTAL, length=400, mode="determinate"
         )
         self.progress_bar.pack(pady=5)
-
-        self.output_text = tk.Text(action_frame, height=10, width=80)
-        self.output_text.pack(pady=5)
-
-        self.image_label = ttk.Label(action_frame)
-        self.image_label.pack(pady=5)
 
     def update_saves_folder(self, folder, silent=False):
         if folder:

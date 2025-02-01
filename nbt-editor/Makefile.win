@@ -1,0 +1,29 @@
+CC = clang
+CFLAGS = -I. -shared -D_DLL -D_USRDLL -DWIN32 -D_WIN32 -Wl,--out-implib,$(BUILD_DIR)/libmc.a
+LDFLAGS = -shared -lws2_32 -lz
+
+BUILD_DIR = build
+
+DEPS = mc.h
+# Exclude main.c from the list of source files.
+SRC = $(filter-out main.c, $(wildcard *.c))
+OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
+
+# Default target builds the shared library for Windows (.dll).
+all: $(BUILD_DIR)/libmc.dll
+
+# Create the build directory if it doesn't exist
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Compile each .c file into an object file in the build directory
+$(BUILD_DIR)/%.o: %.c $(DEPS) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Link all object files into a Windows DLL
+$(BUILD_DIR)/libmc.dll: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^ -Wl,--out-implib,$(BUILD_DIR)/libmc.a
+
+# Clean command
+clean:
+	rm -rf $(BUILD_DIR)

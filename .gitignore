@@ -57,3 +57,6 @@ models
 generated_samples
 **/.DS_Store
 **/__pycache__
+*.spec
+build
+dist
