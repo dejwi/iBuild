@@ -51,6 +51,9 @@ class Mixin:
         self.update_progress("Generating description for the image", 40)
         description = self.multimodal_understanding(image, janus_image_analyze_prompt)
 
+        with open("./generated_samples/desc_log.txt", "w") as f:
+            f.write(description)
+
         # Unload model and clean up
         self.janus_model.cpu()
         del self.janus_processor

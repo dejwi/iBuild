@@ -10,13 +10,13 @@ class Mixin:
     update_progress: Callable[[str, int], Any]
     llm_model_local_path: str
 
-    def run_llm(self, prompt, ai_description):
+    def run_llm(self, prompt, ai_description, cpu_threads, gpu_layers):
         self.update_progress("Init llm", 45)
         llm = Llama(
             model_path=self.llm_model_local_path,
-            n_ctx=8000,
-            n_threads=8,
-            n_gpu_layers=8,
+            n_ctx=8100,
+            n_threads=cpu_threads,
+            n_gpu_layers=gpu_layers,
             verbose=False,
         )
         # combined_prompt = f"Prompt: {prompt}\nDescription: {ai_description}\n"
@@ -37,6 +37,11 @@ class Mixin:
         )
         text: str = output["choices"][0]["message"]["content"]  # type: ignore
         cleaned_text = re.sub(r".*?</think>\s*", "", text, flags=re.DOTALL).strip()
+
+        with open("./generated_samples/llm_full.txt", "w") as f:
+            f.write(text)
+        with open("./generated_samples/llm_clean.txt", "w") as f:
+            f.write(cleaned_text)
 
         del llm
         gc.collect()

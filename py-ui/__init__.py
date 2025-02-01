@@ -1,7 +1,7 @@
 import os
 import threading
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import Event, filedialog, messagebox, ttk
 from typing import Any, Optional
 
 import llm
@@ -9,6 +9,49 @@ import multimodal
 from huggingface_hub import hf_hub_download, snapshot_download
 from janus.models import MultiModalityCausalLM
 from tqdm.auto import tqdm
+
+AI_PRESETS = [
+    {
+        "text": "Custom",
+        "subtext": "",
+        "llm": {
+            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "cpu_threads": 10,
+            "gpu_layers": 46,
+        },
+    },
+    {
+        "text": "24gb RAM, 10gb VRAM",
+        "subtext": "32b IQ4_S",
+        "llm": {
+            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "cpu_threads": 10,
+            "gpu_layers": 46,
+        },
+    },
+    {
+        "text": "16gb RAM, 8gb GB",
+        "subtext": "balanced",
+        "llm": {
+            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "cpu_threads": 8,
+            "gpu_layers": 46,
+        },
+    },
+    {
+        "text": "16gb RAM, +-6gb VRAM",
+        "subtext": "7b Q4_K_M - mostly bad results",
+        "llm": {
+            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
+            "cpu_threads": 8,
+            "gpu_layers": 8,
+        },
+    },
+]
 
 
 class AIApplication(multimodal.Mixin, llm.Mixin):
@@ -20,10 +63,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         # Model paths
         self.janus_model_path = "deepseek-ai/Janus-Pro-1B"
-        self.llm_model_path = {
-            "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
-            "filename": "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf",
-        }
+        self.llm_model_path = AI_PRESETS[0]["llm"]
         self.janus_model_local_path = os.path.join("./models", self.janus_model_path)
         self.llm_model_local_path = os.path.join(
             "./models", self.llm_model_path["filename"]
@@ -49,7 +89,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         # Insert default text
         self.prompt_text.insert(
             tk.END,
-            "starter house with a glowstone roof. Block palette with indexes: minecraft:air 0, minecraft:birch_planks 1, minecraft:cobblestone 2, minecraft:door 3, minecraft:glowstone 4. Make sure that the house is walkable so is at least partially filled with minecraft:air..\nDimensions of the build are x_size = 10, z_size = 10, y_size = 6.",
+            "starter house with a glowstone roof. Block palette with indexes: minecraft:air 0, minecraft:birch_planks 1, minecraft:cobblestone 2, minecraft:door 3, minecraft:glowstone 4. Make sure that the house is walkable so is at least partially filled with minecraft:air.\nDimensions of the build are x_size = 10, z_size = 10, y_size = 6.",
         )
 
         # ----- Minecraft Saves Section -----
@@ -87,30 +127,17 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         blocks_label = ttk.Label(
             blocks_frame,
-            text="Select blocks to use in the build (Ctrl+Click to select multiple):",
+            text="Select blocks to use. Minecraft id's separated by a space.",
         )
         blocks_label.pack(anchor="w", padx=5, pady=(5, 0))
 
         # Listbox with multiple selection; add default values.
-        self.blocks_listbox = tk.Listbox(blocks_frame, selectmode=tk.MULTIPLE, height=6)
-        self.blocks_listbox.pack(fill="both", padx=5, pady=5)
-        available_blocks = [
-            "minecraft:air",
-            "minecraft:oak_planks",
-            "minecraft:glass",
-            "minecraft:stone",
-            "minecraft:brick_block",
-            "minecraft:diamond_block",
-        ]
-        for block in available_blocks:
-            self.blocks_listbox.insert(tk.END, block)
-        # Preselect the defaults
-        for default in ["minecraft:air", "minecraft:oak_planks", "minecraft:glass"]:
-            try:
-                index = available_blocks.index(default)
-                self.blocks_listbox.select_set(index)
-            except ValueError:
-                pass
+        self.blocks_text = tk.Text(blocks_frame, height=4)
+        self.blocks_text.pack(fill="both", padx=5, pady=5)
+        self.blocks_text.insert(
+            tk.END,
+            "minecraft:air minecraft:oak_planks minecraft:cobblestone minecraft:glass minecraft:glowstone",
+        )
 
         # ----- AI Presets Section -----
         presets_frame = ttk.LabelFrame(self.root, text="AI Presets")
@@ -119,25 +146,22 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         presets_select_frame = ttk.Frame(presets_frame)
         presets_select_frame.pack(fill="x", padx=5, pady=5)
 
-        self.preset_options = [
-            {"text": "24gb RAM, 10gb GB", "subtext": "recommended"},
-            {"text": "16gb RAM, 8gb GB", "subtext": "balanced"},
-            {"text": "8gb RAM, 4gb GB", "subtext": "low memory"},
-        ]
         # We combine text and subtext for display in the dropdown.
-        preset_display = [
-            f"{opt['text']} ({opt['subtext']})" for opt in self.preset_options
-        ]
+        preset_display = [f"{opt['text']} ({opt['subtext']})" for opt in AI_PRESETS]
 
         self.preset_combo = ttk.Combobox(presets_select_frame, state="readonly")
         self.preset_combo["values"] = preset_display
-        self.preset_combo.current(0)
+        self.preset_combo.current(1)
         self.preset_combo.pack(side="left", fill="x", expand=True)
+        self.preset_combo.bind("<<ComboboxSelected>>", self.on_select_ai_preset)
 
         # Settings button with a gear icon (using Unicode gear symbol)
         # self.preset_settings_btn = ttk.Button(presets_select_frame, text="?", width=3, command=self.open_settings_window)
         self.preset_settings_btn = ttk.Button(
-            presets_select_frame, text="Custom", width=3
+            presets_select_frame,
+            text="Custom",
+            width=8,
+            command=self.open_settings_window,
         )
         self.preset_settings_btn.pack(side="left", padx=5)
 
@@ -177,7 +201,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                     valid_saves.append(name)
             if valid_saves:
                 self.saves_combo["values"] = valid_saves
-                self.saves_combo.current(0)
+                self.saves_combo.current(1)
             else:
                 messagebox.showwarning(
                     "No valid saves",
@@ -185,7 +209,27 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                 )
                 self.saves_combo["values"] = []
 
+    def on_select_ai_preset(self, event):
+        idx = event.widget.current()
+        selected = AI_PRESETS[idx]
+
+        # Update Custom
+        if idx != 0:
+            AI_PRESETS[0]["llm"] = selected["llm"].copy()
+
+        self.llm_model_path = selected["llm"]
+        self.llm_model_local_path = os.path.join(
+            "./models", self.llm_model_path["filename"]
+        )
+
     def start_generation(self):
+        if self.insert_into_save.get() and not self.saves_combo["values"]:
+            messagebox.showwarning(
+                "No valid saves",
+                "No valid saves. Unselect inserting into minecraft save if you want to only generate data",
+            )
+            return
+
         self.generate_btn.config(state=tk.DISABLED)
         self.running = True
         thread = threading.Thread(target=self.generate_process)
@@ -197,13 +241,14 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
             # Step 1: Generate image with Janus
             image, description = self.run_janus_steps(user_prompt)
-            with open("./generated_samples/desc_log.txt", "w") as f:
-                f.write(description)
 
             # Step 2: Generate final output with R1
-            final_data = self.run_llm(user_prompt, description)
-            with open("./generated_samples/final_data.txt", "w") as f:
-                f.write(final_data)
+            final_data = self.run_llm(
+                user_prompt,
+                description,
+                self.llm_model_path["cpu_threads"],
+                self.llm_model_path["gpu_layers"],
+            )
 
             self.update_progress(value=100)
 
@@ -211,6 +256,99 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             messagebox.showerror("Error", str(e))
         finally:
             self.running = False
+
+    def open_settings_window(self):
+        # Create a new top-level window for settings
+        settings_win = tk.Toplevel(self.root)
+        self.settings_win = settings_win
+        settings_win.title("AI Settings")
+        settings_win.grab_set()  # Modal behavior
+
+        custom_preset = AI_PRESETS[0]["llm"]
+
+        # Create a frame for each section with a separator between them
+        # Section 1: Multimodal AI model (readonly)
+        section1 = ttk.Frame(settings_win)
+        section1.pack(fill="x", padx=10, pady=5)
+        ttk.Label(section1, text="Multimodal AI Model (readonly):").grid(
+            row=0, column=0, sticky="w"
+        )
+        multimodal_entry = ttk.Entry(section1)
+        multimodal_entry.insert(tk.END, self.janus_model_path)
+        multimodal_entry.configure(state="readonly")
+        multimodal_entry.grid(row=0, column=1, sticky="ew")
+        section1.columnconfigure(1, weight=1)
+
+        ttk.Separator(settings_win, orient=tk.HORIZONTAL).pack(
+            fill="x", padx=10, pady=5
+        )
+
+        # Section 2: LLM Model settings (repo_id and filename)
+        section2 = ttk.Frame(settings_win)
+        section2.pack(fill="x", padx=10, pady=5)
+
+        ttk.Label(section2, text="LLM Model Repo ID:").grid(row=0, column=0, sticky="w")
+        self.llm_repo_entry = ttk.Entry(section2)
+        self.llm_repo_entry.grid(row=0, column=1, sticky="ew")
+        self.llm_repo_entry.insert(tk.END, custom_preset["repo_id"])
+
+        ttk.Label(section2, text="LLM Model Filename:").grid(
+            row=1, column=0, sticky="w"
+        )
+        self.llm_filename_entry = ttk.Entry(section2)
+        self.llm_filename_entry.grid(row=1, column=1, sticky="ew")
+        self.llm_filename_entry.insert(tk.END, custom_preset["filename"])
+        section2.columnconfigure(1, weight=1)
+
+        ttk.Separator(settings_win, orient=tk.HORIZONTAL).pack(
+            fill="x", padx=10, pady=5
+        )
+
+        # Section 3: Other AI Settings
+        section3 = ttk.Frame(settings_win)
+        section3.pack(fill="x", padx=10, pady=5)
+        # ttk.Label(section3, text="Max Context Size:").grid(row=0, column=0, sticky="w")
+        # self.context_size_entry = ttk.Entry(section3)
+        # self.context_size_entry.grid(row=0, column=1, sticky="ew")
+
+        ttk.Label(section3, text="GPU Layers:").grid(row=1, column=0, sticky="w")
+        self.gpu_layers_entry = ttk.Entry(section3)
+        self.gpu_layers_entry.grid(row=1, column=1, sticky="ew")
+        self.gpu_layers_entry.insert(tk.END, custom_preset["gpu_layers"])
+
+        ttk.Label(section3, text="CPU Threads:").grid(row=2, column=0, sticky="w")
+        self.cpu_threads_entry = ttk.Entry(section3)
+        self.cpu_threads_entry.grid(row=2, column=1, sticky="ew")
+        self.cpu_threads_entry.insert(tk.END, custom_preset["cpu_threads"])
+        section3.columnconfigure(1, weight=1)
+
+        # Save button at the bottom window
+        btn_frame = ttk.Frame(settings_win)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Save", command=self.save_custom_settings).pack()
+
+    def save_custom_settings(self):
+        gpu_layers = self.gpu_layers_entry.get()
+        cpu_threads = self.cpu_threads_entry.get()
+        repo_id = self.llm_repo_entry.get()
+        filename = self.llm_filename_entry.get()
+
+        self.preset_combo.current(0)
+
+        # Update custom preset
+        AI_PRESETS[0]["llm"] = {
+            "repo_id": repo_id,
+            "filename": filename,
+            "cpu_threads": cpu_threads,
+            "gpu_layers": gpu_layers,
+        }
+
+        self.llm_model_path = AI_PRESETS[0]["llm"]
+        self.llm_model_local_path = os.path.join(
+            "./models", self.llm_model_path["filename"]
+        )
+
+        self.settings_win.destroy()
 
     def update_progress(self, message=None, value=None):
         self.root.after(0, lambda: self._update_progress(message, value))
