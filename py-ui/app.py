@@ -17,10 +17,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         root.title("AI Dataset Creator")
 
         self.create_widgets()
-        # self.setup_threading()
 
         # Model paths
-        # self.janus_model_path = "models/deepseek-ai/Janus-Pro-7B"
         self.janus_model_path = "deepseek-ai/Janus-Pro-1B"
         self.llm_model_path = {
             "repo_id": "lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF",
@@ -47,6 +45,10 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         self.prompt_entry = tk.Entry(self.root, width=80)
         self.prompt_entry.pack(pady=5)
+        self.prompt_entry.insert(
+            tk.END,
+            "starter house with a glowstone roof. Block palette with indexes: minecraft:air 0, minecraft:birch_planks 1, minecraft:cobblestone 2, minecraft:door 3, minecraft:glowstone 4. Make sure that the house is walkable so is at least partially filled with minecraft:air.. Dimensions of the build are x_size = 10, z_size = 10, y_size = 6.",
+        )
 
         self.progress_label = tk.Label(self.root, text="Ready")
         self.progress_label.pack(pady=5)
@@ -78,13 +80,14 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             user_prompt = self.prompt_entry.get()
 
             # Step 1: Generate image with Janus
-            # image, description = self.run_janus_steps(user_prompt)
-            # print(description)
+            image, description = self.run_janus_steps(user_prompt)
+            with open("./generated_samples/desc_log.txt", "w") as f:
+                f.write(description)
 
-            # Step 2: Generate final output with Qwen
-            # final_output = self.run_qwen_steps(user_prompt, description)
-            ret = self.run_llm("Tell me about roses", "pretty red roses")
-            print(ret)
+            # Step 2: Generate final output with R1
+            final_data = self.run_llm(user_prompt, description)
+            with open("./generated_samples/final_data.txt", "w") as f:
+                f.write(final_data)
 
             self.update_progress(value=100)
 

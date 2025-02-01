@@ -8,7 +8,7 @@ from janus.models import MultiModalityCausalLM, VLChatProcessor
 from janus.models.modeling_vlm import MultiModalityCausalLM
 from PIL import Image
 from transformers import AutoConfig, AutoModelForCausalLM
-from utils import clear_torch_cache, device, dtype
+from utils import clear_torch_cache, device, dtype, janus_image_analyze_prompt
 
 
 class Mixin:
@@ -43,14 +43,13 @@ class Mixin:
 
         # Generate image
         self.update_progress("Generating image", 15)
-        image = self.generate_image(prompt)
+        image = self.generate_image(
+            f"minecraft {prompt}. Build is created in the video game minecraft."
+        )
 
         # Generate description
         self.update_progress("Generating description for the image", 40)
-        description = self.multimodal_understanding(
-            image, "Describe the provided image"
-        )
-        # description = self.generate_image_description(image, janus_model, tokenizer)
+        description = self.multimodal_understanding(image, janus_image_analyze_prompt)
 
         # Unload model and clean up
         self.janus_model.cpu()
