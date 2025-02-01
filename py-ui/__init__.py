@@ -1,6 +1,8 @@
 import os
 import threading
 import tkinter as tk
+import traceback
+from os.path import exists
 from tkinter import Event, filedialog, messagebox, ttk
 from typing import Any, Optional
 
@@ -8,6 +10,7 @@ import llm
 import multimodal
 from huggingface_hub import hf_hub_download, snapshot_download
 from janus.models import MultiModalityCausalLM
+from nbt_link import insert_build_save
 from tqdm.auto import tqdm
 
 AI_PRESETS = [
@@ -76,11 +79,12 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.reasoning_tokenizer = None
 
         self.running = False
+        self.valid_saves_paths = []
 
         self.patch_tqm()
 
     def create_widgets(self):
-        # ----- Prompt Section -----
+        # Prompt Section
         prompt_frame = ttk.LabelFrame(self.root, text="Prompt")
         prompt_frame.pack(fill="x", padx=10, pady=5)
 
@@ -89,10 +93,10 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         # Insert default text
         self.prompt_text.insert(
             tk.END,
-            "starter house with a glowstone roof. Block palette with indexes: minecraft:air 0, minecraft:birch_planks 1, minecraft:cobblestone 2, minecraft:door 3, minecraft:glowstone 4. Make sure that the house is walkable so is at least partially filled with minecraft:air.\nDimensions of the build are x_size = 10, z_size = 10, y_size = 6.",
+            "starter house with a glowstone roof. Make sure that the house is walkable so is at least partially filled with minecraft:air.",
         )
 
-        # ----- Minecraft Saves Section -----
+        # Minecraft Saves Section
         saves_frame = ttk.LabelFrame(self.root, text="Minecraft Saves")
         saves_frame.pack(fill="x", padx=10, pady=5)
 
@@ -110,7 +114,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.saves_combo.pack(fill="x", padx=5, pady=5)
         self.saves_combo["values"] = []  # initially empty
 
-        # ----- Build Insertion Toggle -----
+        # Build Insertion Toggle
         toggle_frame = ttk.Frame(saves_frame)
         toggle_frame.pack(fill="x", padx=10, pady=5)
         self.insert_into_save = tk.BooleanVar(value=True)
@@ -121,7 +125,35 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         )
         self.insert_check.pack(side="left")
 
-        # ----- Minecraft Blocks Selection -----
+        # Build Position Section
+        position_frame = ttk.LabelFrame(self.root, text="Build Position")
+        position_frame.pack(fill="x", padx=10, pady=5)
+
+        pos_inputs_frame = ttk.Frame(position_frame)
+        pos_inputs_frame.pack(fill="x", padx=5, pady=5)
+
+        ttk.Label(pos_inputs_frame, text="X:").pack(side="left", padx=(0, 5))
+        self.pos_x = ttk.Entry(pos_inputs_frame, width=10)
+        self.pos_x.pack(side="left", padx=(0, 10))
+        self.pos_x.insert(tk.END, "14")
+
+        ttk.Label(pos_inputs_frame, text="Y:").pack(side="left", padx=(0, 5))
+        self.pos_y = ttk.Entry(pos_inputs_frame, width=10)
+        self.pos_y.pack(side="left", padx=(0, 10))
+        self.pos_y.insert(tk.END, "98")
+
+        ttk.Label(pos_inputs_frame, text="Z:").pack(side="left", padx=(0, 5))
+        self.pos_z = ttk.Entry(pos_inputs_frame, width=10)
+        self.pos_z.pack(side="left")
+        self.pos_z.insert(tk.END, "15")
+
+        # Insert Last Build Button
+        insert_button = ttk.Button(
+            pos_inputs_frame, text="Insert Last Build", command=self.insert_last_build
+        )
+        insert_button.pack(pady=5)
+
+        # Minecraft Blocks Selection
         blocks_frame = ttk.LabelFrame(self.root, text="Minecraft Blocks")
         blocks_frame.pack(fill="both", padx=10, pady=5)
 
@@ -139,14 +171,13 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             "minecraft:air minecraft:oak_planks minecraft:cobblestone minecraft:glass minecraft:glowstone",
         )
 
-        # ----- AI Presets Section -----
+        # AI Presets Section
         presets_frame = ttk.LabelFrame(self.root, text="AI Presets")
         presets_frame.pack(fill="x", padx=10, pady=5)
 
         presets_select_frame = ttk.Frame(presets_frame)
         presets_select_frame.pack(fill="x", padx=5, pady=5)
 
-        # We combine text and subtext for display in the dropdown.
         preset_display = [f"{opt['text']} ({opt['subtext']})" for opt in AI_PRESETS]
 
         self.preset_combo = ttk.Combobox(presets_select_frame, state="readonly")
@@ -155,8 +186,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.preset_combo.pack(side="left", fill="x", expand=True)
         self.preset_combo.bind("<<ComboboxSelected>>", self.on_select_ai_preset)
 
-        # Settings button with a gear icon (using Unicode gear symbol)
-        # self.preset_settings_btn = ttk.Button(presets_select_frame, text="?", width=3, command=self.open_settings_window)
+        # Settings button
         self.preset_settings_btn = ttk.Button(
             presets_select_frame,
             text="Custom",
@@ -165,7 +195,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         )
         self.preset_settings_btn.pack(side="left", padx=5)
 
-        # ----- Generation & Output Section -----
+        # Generation & Output Section
         action_frame = ttk.Frame(self.root)
         action_frame.pack(fill="both", padx=10, pady=10)
 
@@ -194,20 +224,23 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         if folder:
             self.saves_folder_label.config(text=folder)
             valid_saves = []
+            self.valid_saves_paths = []
             # Scan the folder for subdirectories containing level.dat
             for name in os.listdir(folder):
                 subdir = os.path.join(folder, name)
                 if os.path.isdir(subdir) and "level.dat" in os.listdir(subdir):
                     valid_saves.append(name)
+                    self.valid_saves_paths.append(subdir)
             if valid_saves:
                 self.saves_combo["values"] = valid_saves
-                self.saves_combo.current(1)
+                self.saves_combo.current(0)
             else:
                 messagebox.showwarning(
                     "No valid saves",
                     "No valid Minecraft saves found (missing level.dat).",
                 )
                 self.saves_combo["values"] = []
+                self.valid_saves_paths = []
 
     def on_select_ai_preset(self, event):
         idx = event.widget.current()
@@ -222,7 +255,60 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             "./models", self.llm_model_path["filename"]
         )
 
+    def get_positions(self):
+        try:
+            x = int(self.pos_x.get())
+            y = int(self.pos_y.get())
+            z = int(self.pos_z.get())
+            return [x, y, z]
+        except:
+            messagebox.showwarning(
+                "Incorecct build position values",
+                "Incorecct build position values",
+            )
+            return None
+
+    def insert_last_build(self):
+        if not self.saves_combo["values"]:
+            messagebox.showwarning(
+                "Error inserting build",
+                "No valid saves.",
+            )
+            return
+        if not exists("./generated_samples/llm_clean.txt"):
+            messagebox.showwarning(
+                "Error inserting build",
+                "./generated_samples/llm_clean.txt doesn't exist",
+            )
+            return
+
+        pos = self.get_positions()
+        if not pos:
+            return
+
+        try:
+            f = open("./generated_samples/llm_clean.txt", "r")
+            data = f.read()
+            insert_build_save(
+                data,
+                self.valid_saves_paths[self.saves_combo.current()],
+                pos[0],
+                pos[1],
+                pos[2],
+            )
+        except Exception as e:
+            messagebox.showerror("Error inserting build", f"Error inserting build. {e}")
+            traceback.print_exc()
+        else:
+            messagebox.showinfo("Succes", "Inserted build into save")
+
     def start_generation(self):
+        self.generate_btn.config(state=tk.DISABLED)
+        self.running = True
+        thread = threading.Thread(target=self.generate_process)
+        thread.start()
+
+    def generate_process(self):
         if self.insert_into_save.get() and not self.saves_combo["values"]:
             messagebox.showwarning(
                 "No valid saves",
@@ -230,32 +316,63 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             )
             return
 
-        self.generate_btn.config(state=tk.DISABLED)
-        self.running = True
-        thread = threading.Thread(target=self.generate_process)
-        thread.start()
-
-    def generate_process(self):
         try:
+            self.update_progress("Verifying AI models files", 0)
+            self.download_model(
+                repo_id=self.janus_model_path, local_dir=self.janus_model_local_path
+            )
+            self.download_model(
+                repo_id=self.llm_model_path["repo_id"],
+                filename=self.llm_model_path["filename"],
+                local_dir="./models",
+            )
+
             user_prompt = self.prompt_text.get("1.0", "end-1c")
+            blocks = self.blocks_text.get("1.0", "end-1c")
+
+            palette_prompt = ""
+            for i, block in enumerate(blocks.split(" ")):
+                palette_prompt += f"{block} (index {i})\n"
 
             # Step 1: Generate image with Janus
-            image, description = self.run_janus_steps(user_prompt)
+            image_user_prompt = f"{user_prompt}. Use following blocks: {blocks}"
+            image, description = self.run_janus_steps(image_user_prompt)
 
             # Step 2: Generate final output with R1
+            prepared_prompt = f"User prompt:\n`{user_prompt}`\nBlock palette: \n{palette_prompt}.\nAI description:\n`{description}`"
             final_data = self.run_llm(
-                user_prompt,
+                prepared_prompt,
                 description,
                 self.llm_model_path["cpu_threads"],
                 self.llm_model_path["gpu_layers"],
             )
 
-            self.update_progress(value=100)
+            if self.insert_into_save.get():
+                pos = self.get_positions()
+                if pos is None:
+                    self.update_progress(
+                        "Invalid position - try 'insert last build' with different settings",
+                        value=100,
+                    )
+                    return
+                insert_build_save(
+                    final_data,
+                    self.valid_saves_paths[self.saves_combo.current()],
+                    pos[0],
+                    pos[1],
+                    pos[2],
+                )
+                self.update_progress("Successfully inserted build into save", value=100)
+            else:
+                self.update_progress("Generated logs to ./generated_samples", value=100)
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
+            traceback.print_exc
+            self.update_progress("Error", value=100)
         finally:
             self.running = False
+            self.generate_btn.config(state=tk.NORMAL)
 
     def open_settings_window(self):
         # Create a new top-level window for settings
@@ -374,11 +491,6 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                     if self.format_dict["rate"]
                     else 0.001
                 )
-                # time_left = format_time((total_size - downloaded) / speed)
-                # progress_bar.progress(
-                #     self.n / self.total,
-                #     f"Downloaded: {int(downloaded)}/{int(total_size)} MB Speed: {speed:.2f} MB/s Remaining: {time_left}",
-                # )
                 update_progress(
                     f"{self.desc}: {int(downloaded)}/{int(total_size)} MB Speed: {speed:.2f} MB/s",
                     (self.n / self.total) * 100,

@@ -11,7 +11,7 @@ class Mixin:
     llm_model_local_path: str
 
     def run_llm(self, prompt, ai_description, cpu_threads, gpu_layers):
-        self.update_progress("Init llm", 45)
+        self.update_progress("Initializng llm", 45)
         llm = Llama(
             model_path=self.llm_model_local_path,
             n_ctx=8100,
@@ -19,9 +19,8 @@ class Mixin:
             n_gpu_layers=gpu_layers,
             verbose=False,
         )
-        # combined_prompt = f"Prompt: {prompt}\nDescription: {ai_description}\n"
-        self.update_progress("Generate final dataset", 60)
-        # output = llm(combined_prompt, max_tokens=5000)
+        self.update_progress("Generating final dataset", 60)
+
         output = llm.create_chat_completion(
             messages=[
                 {

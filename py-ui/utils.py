@@ -16,6 +16,10 @@ def clear_torch_cache():
     torch.mps.empty_cache()
 
 
+default_dimensions_prompt = (
+    "Dimensions of the build are x_size = 10, z_size = 10, y_size = 6."
+)
+
 llm_system_prompt = """
 You are a Minecraft custom build generator expert. Your job is to generate structured 3D Minecraft builds based on:
 1. A user-provided request (defining the build type, block palette, and dimensions).

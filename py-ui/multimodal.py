@@ -100,7 +100,6 @@ class Mixin:
             bos_token_id=tokenizer.bos_token_id,
             eos_token_id=tokenizer.eos_token_id,
             max_new_tokens=512,
-            # do_sample=False if temperature == 0 else True,
             do_sample=False,
             use_cache=True,
             # temperature=temperature,
@@ -224,4 +223,3 @@ class Mixin:
             save_path = os.path.join("./generated_samples", "img_{}.jpg".format(0))
             Image.fromarray(images[0]).save(save_path)
             return images[0]
-            # return [Image.fromarray(images[i]).resize((768, 768), Image.LANCZOS) for i in range(parallel_size)]
