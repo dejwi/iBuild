@@ -128,11 +128,11 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         # Build Insertion Toggle
         toggle_frame = ttk.Frame(saves_frame)
         toggle_frame.pack(fill="x", padx=10, pady=5)
-        self.insert_into_save = tk.BooleanVar(value=True)
+        self.insert_into_save_val = tk.BooleanVar(value=True)
         self.insert_check = ttk.Checkbutton(
             toggle_frame,
             text="Insert build into Minecraft save",
-            variable=self.insert_into_save,
+            variable=self.insert_into_save_val,
         )
         self.insert_check.pack(side="left")
 
@@ -323,7 +323,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         thread.start()
 
     def generate_process(self):
-        if self.insert_into_save.get() and not self.saves_combo["values"]:
+        if self.insert_into_save_val.get() and not self.saves_combo["values"]:
             messagebox.showwarning(
                 "No valid saves",
                 "No valid saves. Unselect inserting into minecraft save if you want to only generate data",
@@ -361,7 +361,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                 self.llm_model_path["gpu_layers"],
             )
 
-            if self.insert_into_save.get():
+            if self.insert_into_save_val.get():
                 pos = self.get_positions()
                 if pos is None:
                     self.update_progress(
