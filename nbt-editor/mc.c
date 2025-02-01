@@ -158,8 +158,8 @@ handle_palette(const unsigned char *block_states, const block_build_t *build,
   return head;
 }
 
-void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
-                     const block_build_t *build) {
+int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
+               const block_build_t *build) {
   size_t chunk_header_offset = 4 * ((x_chunk & 31) + (z_chunk & 31) * 32);
   chunk_location_t chunk_loc;
   insert_data_t *edit_head = NULL;
@@ -170,8 +170,19 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
   int min_y_sc = build->pos.y / 16;
   int max_y_sc = (build->y_size + build->pos.y - 1) / 16;
 
-  load_chunk_data(region_path, chunk_header_offset, &chunk_loc, &uncomp_size,
-                  &uncomp_data);
+  int load_res = load_chunk_data(region_path, chunk_header_offset, &chunk_loc,
+                                 &uncomp_size, &uncomp_data);
+  if (load_res != 0)
+    return load_res;
+
+  unsigned char *status_el = find_data_tag_comp("Status", uncomp_data + 3);
+  assert(status_el != NULL);
+
+  // Not generated
+  if (strncmp((char *)status_el + 2, "full", strlen("full")) != 0 &&
+      strncmp((char *)status_el + 2, "minecraft:full",
+              strlen("minecraft:full")) != 0)
+    return 1;
 
   unsigned char *sections = find_data_tag_comp("sections", uncomp_data + 3);
   assert(sections != NULL);
@@ -252,9 +263,6 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
       // copy over last byte from block_states at the end
       memcpy(new_indices + indices_offset,
              uncomp_data + block_states_end_offset - 1, 1);
-      printf("last byte: %d\n", (uncomp_data + block_states_end_offset - 1)[0]);
-      printf("last byte2: %d\n", (uncomp_data + block_states_end_offset)[0]);
-      printf("%d == %d\n", total_indices_size, indices_offset + 1);
 
       insert_data_t *edit_indices = malloc(sizeof(insert_data_t));
       edit_indices->next = NULL;
@@ -270,7 +278,6 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     assert(indices_el != NULL);
 
     int indicies_len = get_int_le(indices_el);
-    printf("indicies len: %d\n", indicies_len);
 
     int min_y = y_pos * 16;
     int max_y = ((y_pos + 1) * 16) - 1;
@@ -309,7 +316,7 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
           int ch_pos = ch_y * 16 * 16 + ch_z * 16 + ch_x;
 
-          printf("Build block: %lld, at: %d\n", build_block, ch_pos);
+          /* printf("Build block: %lld, at: %d\n", build_block, ch_pos); */
 
           int idx = ch_pos / (64 / bits);
           int64_t block = 0;
@@ -337,4 +344,5 @@ void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
   free(uncomp_data);
   free_insert_list(edit_head);
+  return 0;
 }

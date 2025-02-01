@@ -18,5 +18,5 @@ typedef struct {
   int *indices;
 } block_build_t;
 
-void test_chunk_edit(const char *region_path, int x_chunk, int z_chunk,
-                     const block_build_t *build);
+int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
+               const block_build_t *build);

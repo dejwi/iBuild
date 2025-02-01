@@ -27,13 +27,13 @@ lib_path = os.path.join(os.path.dirname(__file__), "../nbt-editor/build", "libmc
 libmc = ctypes.CDLL(lib_path)
 
 # Set the argument types and return type for test_chunk_edit.
-libmc.test_chunk_edit.argtypes = [
+libmc.chunk_edit.argtypes = [
     ctypes.c_char_p,  # region_path
     ctypes.c_int,  # x_chunk
     ctypes.c_int,  # z_chunk
     ctypes.POINTER(BlockBuild),  # build
 ]
-libmc.test_chunk_edit.restype = None
+libmc.chunk_edit.restype = ctypes.c_int
 
 # Example JSON string (you can also load this from a file)
 json_str = r"""
@@ -146,6 +146,8 @@ def insert_build_save(
                     "Region file doesn't exist. Maybe terrain didn't generate in the given area"
                 )
 
-            libmc.test_chunk_edit(
+            res = libmc.chunk_edit(
                 region_path.encode("utf-8"), ch_x, ch_z, ctypes.byref(c_build)
             )
+            if res == 1:
+                raise Exception("Terrain in given position is not fully generated")

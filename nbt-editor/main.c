@@ -73,7 +73,7 @@ int main() {
 
   for (int ch_x = chunk_start_x; ch_x <= chunk_end_x; ch_x++) {
     for (int ch_z = chunk_start_z; ch_z <= chunk_end_z; ch_z++) {
-      test_chunk_edit(TEST_PATH, ch_x, ch_z, &build);
+      chunk_edit(TEST_PATH, ch_x, ch_z, &build);
     }
   }
 

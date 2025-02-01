@@ -92,9 +92,9 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
   return buffer;
 }
 
-void load_chunk_data(const char *region_path, size_t header_offset,
-                     chunk_location_t *out_loc, size_t *out_size,
-                     unsigned char **out_data) {
+int load_chunk_data(const char *region_path, size_t header_offset,
+                    chunk_location_t *out_loc, size_t *out_size,
+                    unsigned char **out_data) {
   FILE *fRegion;
   // Open a file in read mode
   fRegion = fopen(region_path, "rb");
@@ -108,6 +108,9 @@ void load_chunk_data(const char *region_path, size_t header_offset,
     exit(1);
   }
   create_chunk_location(&chunk_loc_raw, out_loc);
+  // Chunk is probably not generated
+  if (out_loc->offset == 0)
+    return 1;
 
   fseek(fRegion, out_loc->offset * SECTOR_SIZE, SEEK_SET);
 
@@ -150,6 +153,7 @@ void load_chunk_data(const char *region_path, size_t header_offset,
   *out_size = uncomp_size;
 
   free(comp_data);
+  return 0;
 }
 
 void write_chunk_data(const char *region_path,

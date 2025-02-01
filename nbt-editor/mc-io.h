@@ -31,9 +31,9 @@ void free_insert_list(insert_data_t *head);
 unsigned char *insert_data(const unsigned char *data, size_t size,
                            const insert_data_t *payload, size_t *out_size);
 
-void load_chunk_data(const char *region_path, size_t header_offset,
-                     chunk_location_t *out_loc, size_t *out_size,
-                     unsigned char **out_data);
+int load_chunk_data(const char *region_path, size_t header_offset,
+                    chunk_location_t *out_loc, size_t *out_size,
+                    unsigned char **out_data);
 
 void write_chunk_data(const char *region_path,
                       const chunk_location_t *chunk_loc,
