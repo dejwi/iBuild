@@ -51,12 +51,12 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-nbt-editor/build
+/nbt-editor/build
 .venv
-models
-generated_samples
+/models
+/generated_samples
 **/.DS_Store
 **/__pycache__
 *.spec
-build
-dist
+/build
+/dist
