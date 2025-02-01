@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 import traceback
 from os.path import exists
-from tkinter import Event, filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 from typing import Any, Optional
 
 import llm
@@ -56,6 +56,12 @@ AI_PRESETS = [
     },
 ]
 
+default_save_paths = [
+    "%APPDATA%\\.minecraft\\saves",
+    "~/Library/Application Support/minecraft/saves",
+    "~/.minecraft/saves",
+]
+
 
 class AIApplication(multimodal.Mixin, llm.Mixin):
     def __init__(self, root):
@@ -81,6 +87,11 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.running = False
         self.valid_saves_paths = []
 
+        for path in default_save_paths:
+            if exists(path):
+                self.update_saves_folder(path, True)
+                break
+
         self.patch_tqm()
 
     def create_widgets(self):
@@ -103,7 +114,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         btn_frame = ttk.Frame(saves_frame)
         btn_frame.pack(fill="x", padx=5, pady=5)
         self.select_saves_btn = ttk.Button(
-            btn_frame, text="Select Saves Folder", command=self.select_saves_folder
+            btn_frame, text="Select Saves Folder", command=self.user_handle_saves_folder
         )
         self.select_saves_btn.pack(side="left", padx=(0, 5))
         self.saves_folder_label = ttk.Label(btn_frame, text="No folder selected")
@@ -218,9 +229,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.image_label = ttk.Label(action_frame)
         self.image_label.pack(pady=5)
 
-    def select_saves_folder(self):
-        folder = filedialog.askdirectory(title="Select Minecraft Saves Folder")
-
+    def update_saves_folder(self, folder, silent=False):
         if folder:
             self.saves_folder_label.config(text=folder)
             valid_saves = []
@@ -235,12 +244,17 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                 self.saves_combo["values"] = valid_saves
                 self.saves_combo.current(0)
             else:
-                messagebox.showwarning(
-                    "No valid saves",
-                    "No valid Minecraft saves found (missing level.dat).",
-                )
+                if not silent:
+                    messagebox.showwarning(
+                        "No valid saves",
+                        "No valid Minecraft saves found (missing level.dat).",
+                    )
                 self.saves_combo["values"] = []
                 self.valid_saves_paths = []
+
+    def user_handle_saves_folder(self):
+        folder = filedialog.askdirectory(title="Select Minecraft Saves Folder")
+        self.update_saves_folder(folder)
 
     def on_select_ai_preset(self, event):
         idx = event.widget.current()
