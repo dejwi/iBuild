@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 import PyInstaller.__main__
-from PyInstaller.utils.hooks import collect_data_files, get_package_paths
+from PyInstaller.utils.hooks import get_package_paths
 
 MAKEFILE_DIR = os.path.join(os.path.dirname(__file__), "../nbt-editor")
 HOOKS_DIR = os.path.join(os.path.dirname(__file__), "hooks")
@@ -40,11 +40,12 @@ def compile_c_code():
 
 def run_pyinstaller():
     lib_path = compile_c_code()
+    llama_lib_path = os.path.join(get_package_paths("llama_cpp")[1], "lib")
+
     # Clean up previous builds if they exist.
     for folder in ["build", "dist"]:
         if os.path.exists(folder):
             shutil.rmtree(folder)
-    llama_lib_path = os.path.join(get_package_paths("llama_cpp")[1], "lib")
 
     print("Running PyInstaller...")
     try:
