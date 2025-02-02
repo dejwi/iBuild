@@ -50,7 +50,6 @@ else:
 
 libmc = ctypes.CDLL(lib_path)
 
-# Set the argument types and return type for test_chunk_edit.
 libmc.chunk_edit.argtypes = [
     ctypes.c_char_p,  # region_path
     ctypes.c_int,  # x_chunk
@@ -58,44 +57,6 @@ libmc.chunk_edit.argtypes = [
     ctypes.POINTER(BlockBuild),  # build
 ]
 libmc.chunk_edit.restype = ctypes.c_int
-
-# Example JSON string (you can also load this from a file)
-json_str = r"""
-{
-  "palette": ["minecraft:air", "minecraft:cobblestone", "minecraft:oak_planks"],
-  "dimensions": {
-    "x_size": 10,
-    "y_size": 6,
-    "z_size": 10
-  },
-  "data": [
-    [
-      [2,2,2,2,2,2,2,2,2,2],
-      [2,1,1,1,1,1,1,1,1,2],
-[2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,2,2,2,2,2,2,2,2,2]
-    ],
-    [
-      [2,2,2,2,2,2,2,2,2,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,1,1,1,1,1,1,1,1,2],
-      [2,2,2,2,2,2,2,2,2,2]
-    ]
-  ]
-}
-"""
 
 
 def clean_json(input_str):
@@ -109,7 +70,6 @@ def clean_json(input_str):
 def insert_build_save(
     ai_output: str, save_folder: str, pos_x: int, pos_y: int, pos_z: int
 ):
-    # Parse the JSON.
     try:
         data = pyjson5.loads(clean_json(ai_output))
     except:
@@ -122,13 +82,16 @@ def insert_build_save(
     x_size = len(indicies_list[0][0])
 
     # Convert palette to a ctypes array of c_char_p.
-    # Convert palette_list to an array of c_char_p (array of pointers to strings)
-    c_palette_arr = (ctypes.c_char_p * len(palette_list))(*[s.encode("utf-8") for s in palette_list])
+    c_palette_arr = (ctypes.c_char_p * len(palette_list))(
+        *[s.encode("utf-8") for s in palette_list]
+    )
 
-    # Convert to char** (pointer to the array of pointers)
-    c_palette_ptr = ctypes.cast(ctypes.pointer(c_palette_arr), ctypes.POINTER(ctypes.c_char_p))
+    # Convert to char**
+    c_palette_ptr = ctypes.cast(
+        ctypes.pointer(c_palette_arr), ctypes.POINTER(ctypes.c_char_p)
+    )
 
-    # Flatten the indices from the 3D "data" array.
+    # Flatten the indices
     flattened_indices = [-1] * y_size * x_size * z_size
     for y in range(y_size):
         for z in range(z_size):
@@ -142,39 +105,23 @@ def insert_build_save(
     num_indices = len(flattened_indices)
     c_indices_arr = (ctypes.c_int * num_indices)(*flattened_indices)
 
-    # Create an instance of BlockBuild and fill in the values.
+    # Create an instance of BlockBuild .
     c_build = BlockBuild()
     c_build.x_size = x_size
     c_build.y_size = y_size
     c_build.z_size = z_size
-    c_build.pos = Vector3(pos_x, pos_y, pos_z)  # Set to (0, 0, 0) or update as needed.
+    c_build.pos = Vector3(pos_x, pos_y, pos_z)
     c_build.palette = c_palette_ptr
     c_build.palette_len = len(palette_list)
     c_build.indices = ctypes.cast(c_indices_arr, ctypes.POINTER(ctypes.c_int))
 
-    # temp
-    # region_path = b"/Users/dawid/Library/Application Support/PrismLauncher/instances/Light-Craft---1.19.3---4.6.3/minecraft/saves/testc/region/r.0.0.mca"
     region_folder = os.path.join(save_folder, "region")
 
     # Call the C function.
-    # libmc.test_chunk_edit(region_path, x_chunk, z_chunk, ctypes.byref(c_build))
     chunk_start_x = c_build.pos.x // 16
     chunk_end_x = (c_build.pos.x + c_build.x_size - 1) // 16
     chunk_start_z = c_build.pos.z // 16
     chunk_end_z = (c_build.pos.z + c_build.z_size - 1) // 16
-
-    print("size x", c_build.x_size)
-    print("size y", c_build.y_size)
-    print("size z", c_build.z_size)
-    print("start chunk x", chunk_start_x)
-    print("end chunk x", chunk_end_x)
-    print("start chunk z", chunk_start_z)
-    print("end chunk z", chunk_end_z)
-    print("indices", flattened_indices)
-    print("posx", c_build.pos.x)
-    print("posy", c_build.pos.y)
-    print("pozz", c_build.pos.z)
-
 
     for ch_x in range(chunk_start_x, chunk_end_x + 1):
         for ch_z in range(chunk_start_z, chunk_end_z + 1):

@@ -114,7 +114,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         self.prompt_text = tk.Text(prompt_frame, height=5, width=80)
         self.prompt_text.pack(padx=5, pady=5)
-        # Insert default text
+        # Default prompt
         self.prompt_text.insert(
             tk.END,
             "starter house with a glowstone roof. Make sure that the house is walkable so is at least partially filled with minecraft:air.",
@@ -136,7 +136,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         # Combobox for valid saves (directories that contain level.dat)
         self.saves_combo = ttk.Combobox(saves_frame, state="readonly")
         self.saves_combo.pack(fill="x", padx=5, pady=5)
-        self.saves_combo["values"] = []  # initially empty
+        self.saves_combo["values"] = []
 
         # Build Insertion Toggle
         toggle_frame = ttk.Frame(saves_frame)
@@ -219,7 +219,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         )
         self.preset_settings_btn.pack(side="left", padx=5)
 
-        # Generation & Output Section
+        # Generate / progressbar
         action_frame = ttk.Frame(self.root)
         action_frame.pack(fill="both", padx=10, pady=10)
 
@@ -405,8 +405,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         custom_preset = AI_PRESETS[0]["llm"]
 
-        # Create a frame for each section with a separator between them
-        # Section 1: Multimodal AI model (readonly)
+        # Multimodal AI model (readonly)
         section1 = ttk.Frame(settings_win)
         section1.pack(fill="x", padx=10, pady=5)
         ttk.Label(section1, text="Multimodal AI Model (readonly):").grid(
@@ -422,7 +421,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             fill="x", padx=10, pady=5
         )
 
-        # Section 2: LLM Model settings (repo_id and filename)
+        # LLM Model settings (repo_id and filename)
         section2 = ttk.Frame(settings_win)
         section2.pack(fill="x", padx=10, pady=5)
 
@@ -443,12 +442,9 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             fill="x", padx=10, pady=5
         )
 
-        # Section 3: Other AI Settings
+        # Other AI Settings
         section3 = ttk.Frame(settings_win)
         section3.pack(fill="x", padx=10, pady=5)
-        # ttk.Label(section3, text="Max Context Size:").grid(row=0, column=0, sticky="w")
-        # self.context_size_entry = ttk.Entry(section3)
-        # self.context_size_entry.grid(row=0, column=1, sticky="ew")
 
         ttk.Label(section3, text="GPU Layers:").grid(row=1, column=0, sticky="w")
         self.gpu_layers_entry = ttk.Entry(section3)
@@ -461,7 +457,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.cpu_threads_entry.insert(tk.END, custom_preset["cpu_threads"])
         section3.columnconfigure(1, weight=1)
 
-        # Save button at the bottom window
+        # Save button
         btn_frame = ttk.Frame(settings_win)
         btn_frame.pack(pady=10)
         ttk.Button(btn_frame, text="Save", command=self.save_custom_settings).pack()
