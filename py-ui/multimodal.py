@@ -7,8 +7,9 @@ import torch
 from janus.models import MultiModalityCausalLM, VLChatProcessor
 from janus.models.modeling_vlm import MultiModalityCausalLM
 from PIL import Image
+from prompts import janus_image_analyze_prompt
 from transformers import AutoConfig, AutoModelForCausalLM
-from utils import clear_torch_cache, device, dtype, janus_image_analyze_prompt
+from utils import clear_torch_cache, device, dtype
 
 
 class Mixin:

@@ -1,2 +1,3 @@
 py-ui/janus/** linguist-vendored
 *.h linguist-language=C
+py-ui/prompts.py linguist-vendored 

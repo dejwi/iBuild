@@ -3,7 +3,7 @@ import re
 from typing import Any, Callable
 
 from llama_cpp import Llama
-from utils import llm_system_prompt
+from prompts import llm_system_prompt
 
 
 class Mixin:

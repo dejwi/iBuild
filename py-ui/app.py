@@ -1,22 +1,21 @@
 import os
-import threading
 import sys
+import threading
 import tkinter as tk
-import torch
 import traceback
 from os.path import exists
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Optional
-from utils import default_dimensions_prompt
 
 import llm
 import multimodal
+import sv_ttk
+import torch
 from huggingface_hub import hf_hub_download, snapshot_download
 from janus.models import MultiModalityCausalLM
 from nbt_link import insert_build_save
+from prompts import default_dimensions_prompt
 from tqdm.auto import tqdm
-
-import sv_ttk
 
 AI_PRESETS = [
     {
@@ -76,12 +75,12 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
         # Set theme for non-macos
         if not sys.platform.startswith("darwin"):
-                sv_ttk.set_theme("dark")
+            sv_ttk.set_theme("dark")
 
         if torch.cuda.is_available():
-                print("cuda")
+            print("cuda")
         else:
-                print("no cuda")
+            print("no cuda")
         self.create_widgets()
 
         # Model paths
