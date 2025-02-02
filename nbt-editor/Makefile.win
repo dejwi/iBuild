@@ -1,8 +1,16 @@
-CC = clang
-CFLAGS = -I. -shared -D_DLL -D_USRDLL -DWIN32 -D_WIN32 -Wl,--out-implib,$(BUILD_DIR)/libmc.a
-LDFLAGS = -shared -lws2_32 -lz
+# Makefile for compiling a Windows shared library (DLL) using MinGW-w64
+
+# Use the 64-bit MinGW-w64 gcc
+CC = x86_64-w64-mingw32-gcc
 
 BUILD_DIR = build
+
+# Compilation flags. Note: -shared is needed only at link time.
+CFLAGS = -I. -m64 -D_DLL -D_USRDLL -DWIN32 -D_WIN32
+# Linker flags (for output options)
+LDFLAGS = -shared -m64 -Wl,--out-implib,$(BUILD_DIR)/libmc.a
+# Libraries to link (placed after object files)
+LDLIBS = -lws2_32 -lz
 
 DEPS = mc.h
 # Exclude main.c from the list of source files.
@@ -22,8 +30,8 @@ $(BUILD_DIR)/%.o: %.c $(DEPS) | $(BUILD_DIR)
 
 # Link all object files into a Windows DLL
 $(BUILD_DIR)/libmc.dll: $(OBJ)
-	$(CC) $(LDFLAGS) -o $@ $^ -Wl,--out-implib,$(BUILD_DIR)/libmc.a
+	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 # Clean command
 clean:
-	rm -rf $(BUILD_DIR)
+	del $(BUILD_DIR)

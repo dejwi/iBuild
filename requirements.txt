@@ -13,3 +13,4 @@ llama_cpp_python==0.3.7
 accelerate
 sentencepiece
 pyjson5==1.6.8
+sv-ttk==2.6.0

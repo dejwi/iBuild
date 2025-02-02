@@ -20,7 +20,7 @@ def compile_c_code():
         lib_path = os.path.join(MAKEFILE_DIR, "build/libmc.so")
     elif sys.platform.startswith("win"):
         # Windows - .dll file
-        makefile = "Makefile.windows"
+        makefile = "Makefile.win"
         lib_path = os.path.join(MAKEFILE_DIR, "build/libmc.dll")
     else:
         print("Unsupported platform")
@@ -60,6 +60,7 @@ def run_pyinstaller():
                 f"{lib_path}:nbt-editor/build",
                 "--name",
                 "iBuild",
+                "--icon=icon.ico",
             ]
         )
     except subprocess.CalledProcessError as e:

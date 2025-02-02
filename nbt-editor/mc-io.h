@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdint.h>
 
 #define SECTOR_SIZE 4096
 

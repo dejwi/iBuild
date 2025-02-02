@@ -1,10 +1,13 @@
 import os
 import threading
+import sys
 import tkinter as tk
+import torch
 import traceback
 from os.path import exists
 from tkinter import filedialog, messagebox, ttk
 from typing import Any, Optional
+from utils import default_dimensions_prompt
 
 import llm
 import multimodal
@@ -12,6 +15,8 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from janus.models import MultiModalityCausalLM
 from nbt_link import insert_build_save
 from tqdm.auto import tqdm
+
+import sv_ttk
 
 AI_PRESETS = [
     {
@@ -66,8 +71,17 @@ default_save_paths = [
 class AIApplication(multimodal.Mixin, llm.Mixin):
     def __init__(self, root):
         self.root = root
-        root.title("AI Dataset Creator")
+        root.title("iBuild")
+        root.iconbitmap("icon.ico")
 
+        # Set theme for non-macos
+        if not sys.platform.startswith("darwin"):
+                sv_ttk.set_theme("dark")
+
+        if torch.cuda.is_available():
+                print("cuda")
+        else:
+                print("no cuda")
         self.create_widgets()
 
         # Model paths
@@ -314,6 +328,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         self.generate_btn.config(state=tk.DISABLED)
         self.running = True
         thread = threading.Thread(target=self.generate_process)
+        thread.daemon = True
         thread.start()
 
     def generate_process(self):
@@ -347,7 +362,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             image, description = self.run_janus_steps(image_user_prompt)
 
             # Step 2: Generate final output with R1
-            prepared_prompt = f"User prompt:\n`{user_prompt}`\nBlock palette: \n{palette_prompt}.\nAI description:\n`{description}`"
+            prepared_prompt = f"User prompt:\n`{user_prompt}`\nBlock palette: \n{palette_prompt}.\n{default_dimensions_prompt}\nAI description:\n`{description}`"
             final_data = self.run_llm(
                 prepared_prompt,
                 description,

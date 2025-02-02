@@ -122,9 +122,11 @@ def insert_build_save(
     x_size = len(indicies_list[0][0])
 
     # Convert palette to a ctypes array of c_char_p.
-    c_palette_arr = (ctypes.c_char_p * len(palette_list))()
-    for i, item in enumerate(palette_list):
-        c_palette_arr[i] = item.encode("utf-8")
+    # Convert palette_list to an array of c_char_p (array of pointers to strings)
+    c_palette_arr = (ctypes.c_char_p * len(palette_list))(*[s.encode("utf-8") for s in palette_list])
+
+    # Convert to char** (pointer to the array of pointers)
+    c_palette_ptr = ctypes.cast(ctypes.pointer(c_palette_arr), ctypes.POINTER(ctypes.c_char_p))
 
     # Flatten the indices from the 3D "data" array.
     flattened_indices = [-1] * y_size * x_size * z_size
@@ -146,7 +148,7 @@ def insert_build_save(
     c_build.y_size = y_size
     c_build.z_size = z_size
     c_build.pos = Vector3(pos_x, pos_y, pos_z)  # Set to (0, 0, 0) or update as needed.
-    c_build.palette = ctypes.cast(c_palette_arr, ctypes.POINTER(ctypes.c_char_p))
+    c_build.palette = c_palette_ptr
     c_build.palette_len = len(palette_list)
     c_build.indices = ctypes.cast(c_indices_arr, ctypes.POINTER(ctypes.c_int))
 
@@ -160,6 +162,19 @@ def insert_build_save(
     chunk_end_x = (c_build.pos.x + c_build.x_size - 1) // 16
     chunk_start_z = c_build.pos.z // 16
     chunk_end_z = (c_build.pos.z + c_build.z_size - 1) // 16
+
+    print("size x", c_build.x_size)
+    print("size y", c_build.y_size)
+    print("size z", c_build.z_size)
+    print("start chunk x", chunk_start_x)
+    print("end chunk x", chunk_end_x)
+    print("start chunk z", chunk_start_z)
+    print("end chunk z", chunk_end_z)
+    print("indices", flattened_indices)
+    print("posx", c_build.pos.x)
+    print("posy", c_build.pos.y)
+    print("pozz", c_build.pos.z)
+
 
     for ch_x in range(chunk_start_x, chunk_end_x + 1):
         for ch_z in range(chunk_start_z, chunk_end_z + 1):

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 // Definitions of nbt tag constants
 #define NEW_NBT(name, type, size) const nbt_helper_t name = {type, size, #name};
