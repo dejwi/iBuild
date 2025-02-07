@@ -1,5 +1,7 @@
+# Makefile for compiling a shared library (.so) for MacOS and Linux 
+
 CC = clang
-CFLAGS = -I. -fPIC -DZF_LOG_DEF_LEVEL=ZF_LOG_DEBUG
+CFLAGS = -I. -fPIC -DZF_LOG_DEF_LEVEL=ZF_LOG_VERBOSE
 LDFLAGS = -shared -lz
 
 BUILD_DIR = build
