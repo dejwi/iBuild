@@ -60,3 +60,5 @@ dkms.conf
 *.spec
 /build
 /dist
+*.egg
+*.egg-info/

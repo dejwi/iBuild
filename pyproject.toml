@@ -29,3 +29,6 @@ dependencies = [
 typeCheckingMode = "standard"
 venv = ".venv"
 venvPath = "."
+
+[tool.setuptools.packages.find]
+where = ["py-ui"]
