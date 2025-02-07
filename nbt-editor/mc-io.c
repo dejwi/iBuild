@@ -3,6 +3,8 @@
 #include "zlib-utils.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 void create_chunk_location(const chunk_location_raw_t *from,
                            chunk_location_t *to) {
@@ -171,21 +173,102 @@ void write_chunk_data(const char *region_path,
   unsigned char *new_comp_data =
       compress_zlib(new_uncomp_data, new_uncomp_size, &new_comp_size);
 
-  /* printf("after comp %d == %lu\n", comp_data_size, new_comp_size); */
-  FILE *fRegion = fopen(region_path, "r+b");
-  fseek(fRegion, chunk_loc->offset * SECTOR_SIZE, SEEK_SET);
+  // Calculate the new size padded to the nearest multiple of 4KiB
+  size_t padded_size = ((new_comp_size + 5 + 4095) / 4096) * 4096;
 
-  ZF_LOGV("newsize: %zu", new_comp_size);
-  // account for compression byte
+  // Resize the file to accommodate the new chunk size
+  struct stat st;
+  if (stat(region_path, &st) != 0) {
+    ZF_LOGE("Failed to stat region file");
+    exit(1);
+  }
+
+  FILE *fRegion = fopen(region_path, "r+b");
+  if (fRegion == NULL) {
+    ZF_LOGE("Failed to open region file");
+    exit(1);
+  }
+
+  fseek(fRegion, 0, SEEK_END);
+  size_t file_size = ftell(fRegion);
+  size_t old_chunk_end =
+      chunk_loc->offset * SECTOR_SIZE + chunk_loc->sector_count * SECTOR_SIZE;
+  size_t new_chunk_end = chunk_loc->offset * SECTOR_SIZE + padded_size;
+
+  if (new_chunk_end > file_size) {
+    // Extend the file size if the new chunk end exceeds the current file size
+    if (ftruncate(fileno(fRegion), new_chunk_end) != 0) {
+      ZF_LOGE("Failed to resize region file");
+      fclose(fRegion);
+      exit(1);
+    }
+  } else if (new_chunk_end > old_chunk_end) {
+    // Move data after the chunk to make space for the new chunk size
+    size_t move_size = file_size - old_chunk_end;
+    unsigned char *buffer = malloc(move_size);
+    fseek(fRegion, old_chunk_end, SEEK_SET);
+    fread(buffer, 1, move_size, fRegion);
+    fseek(fRegion, new_chunk_end, SEEK_SET);
+    fwrite(buffer, 1, move_size, fRegion);
+    free(buffer);
+  } else if (new_chunk_end < old_chunk_end) {
+    // Move data after the chunk to shrink the space for the new chunk size
+    size_t move_size = file_size - old_chunk_end;
+    unsigned char *buffer = malloc(move_size);
+    fseek(fRegion, old_chunk_end, SEEK_SET);
+    fread(buffer, 1, move_size, fRegion);
+    fseek(fRegion, new_chunk_end, SEEK_SET);
+    fwrite(buffer, 1, move_size, fRegion);
+    free(buffer);
+    if (ftruncate(fileno(fRegion),
+                  file_size - (old_chunk_end - new_chunk_end)) != 0) {
+      ZF_LOGE("Failed to resize region file");
+      fclose(fRegion);
+      exit(1);
+    }
+  }
+
+  // Write the new chunk data
+  fseek(fRegion, chunk_loc->offset * SECTOR_SIZE, SEEK_SET);
   int new_size = htonl(new_comp_size + 1);
   fwrite(&new_size, 4, 1, fRegion);
-
-  // move over compression type byte
-  fseek(fRegion, 1, SEEK_CUR);
-
+  fputc(2, fRegion); // Compression type
   fwrite(new_comp_data, new_comp_size, 1, fRegion);
-  fclose(fRegion);
 
+  // Pad the remaining space with zeros
+  size_t padding_size = padded_size - (new_comp_size + 5);
+  unsigned char *padding = calloc(1, padding_size);
+  fwrite(padding, padding_size, 1, fRegion);
+  free(padding);
+
+  // Update the sector count in the chunk location
+  int new_sector_count = padded_size / SECTOR_SIZE;
+  chunk_location_t new_chunk_loc = *chunk_loc;
+  new_chunk_loc.sector_count = new_sector_count;
+
+  // Update the region file header
+  fseek(fRegion, 0, SEEK_SET);
+  for (int i = 0; i < 1024; i++) {
+    chunk_location_raw_t chunk_loc_raw;
+    fread(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+    chunk_location_t temp_chunk_loc;
+    create_chunk_location(&chunk_loc_raw, &temp_chunk_loc);
+
+    if (temp_chunk_loc.offset > chunk_loc->offset) {
+      temp_chunk_loc.offset += new_sector_count - chunk_loc->sector_count;
+      chunk_loc_raw.offset[0] = (temp_chunk_loc.offset >> 16) & 0xFF;
+      chunk_loc_raw.offset[1] = (temp_chunk_loc.offset >> 8) & 0xFF;
+      chunk_loc_raw.offset[2] = temp_chunk_loc.offset & 0xFF;
+      fseek(fRegion, -sizeof(chunk_loc_raw), SEEK_CUR);
+      fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+    } else if (temp_chunk_loc.offset == chunk_loc->offset) {
+      chunk_loc_raw.sector_count = new_sector_count;
+      fseek(fRegion, -sizeof(chunk_loc_raw), SEEK_CUR);
+      fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+    }
+  }
+
+  fclose(fRegion);
   free(new_uncomp_data);
   free(new_comp_data);
 }

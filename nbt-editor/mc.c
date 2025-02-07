@@ -24,8 +24,8 @@
 insert_data_t *handle_palette(const unsigned char *block_states,
                               const block_build_t *build,
                               const unsigned char *uncomp_data,
-                              int *out_mapped_palette_idxs,
-                              int *out_palette_len) {
+                              int *out_mapped_palette_idxs, int *out_bits_old,
+                              int *out_bits_new) {
   insert_data_t *head = NULL;
   insert_data_t *tail = NULL;
   // Fill with empty
@@ -36,7 +36,16 @@ insert_data_t *handle_palette(const unsigned char *block_states,
   assert(palette != NULL);
 
   int palette_len = get_int_le(palette + 1);
-  *out_palette_len = palette_len;
+  int bits_old = count_min_bits(palette_len - 1);
+  int bits_new = count_min_bits(palette_len - 1);
+
+  if (bits_new < 4)
+    bits_new = 4;
+  if (bits_old < 4)
+    bits_old = 4;
+  *out_bits_old = bits_old;
+  *out_bits_new = bits_new;
+
   ZF_LOGD("palette len: %d", palette_len);
 
   // +1 for LIST element type and +4 for LIST length
@@ -86,14 +95,11 @@ insert_data_t *handle_palette(const unsigned char *block_states,
   int new_palette_len = palette_len + items_to_add_size;
   int new_palette_len_be = htonl(new_palette_len);
 
-  // resizing not impl
-  int bits_old = count_min_bits(palette_len - 1);
-  int bits_new = count_min_bits(new_palette_len - 1);
-  if (bits_old < 4)
-    bits_old = 4;
+  // TODO: implement resizing data indices bits size
+  bits_new = count_min_bits(new_palette_len - 1);
   if (bits_new < 4)
     bits_new = 4;
-  assert(bits_new == bits_old);
+  *out_bits_new = bits_new;
 
   insert_data_t *edit_len = malloc(sizeof(insert_data_t));
 
@@ -224,10 +230,12 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
     // Handle palette changes
     int *mapped_palette_idxs = malloc(build->palette_len * sizeof(int));
-    int palette_len = 0;
+    int bits_old = 0;
+    int bits_new = 0;
 
-    insert_data_t *edit_palette = handle_palette(
-        block_states, build, uncomp_data, mapped_palette_idxs, &palette_len);
+    insert_data_t *edit_palette =
+        handle_palette(block_states, build, uncomp_data, mapped_palette_idxs,
+                       &bits_old, &bits_new);
     if (edit_palette != NULL)
       append_insert_list(&edit_head, &edit_tail, edit_palette);
 
@@ -235,13 +243,9 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     for (int i = 0; i < build->palette_len; i++)
       assert(mapped_palette_idxs[i] != -1);
 
-    int bits = count_min_bits(palette_len - 1);
-    if (bits < 4)
-      bits = 4;
-
     unsigned char *indices_el = find_data_tag_comp("data", block_states);
-    if (indices_el == NULL) {
-      ZF_LOGD("Creating indices");
+    if (indices_el == NULL || bits_old != bits_new) {
+      ZF_LOGD("Creating or resizing indices");
       size_t block_states_end_offset =
           resolve_tag_end_offset(block_states, &TAG_COMPOUND);
       block_states_end_offset =
@@ -251,7 +255,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
       unsigned short tag_name_len = strlen(tag_name);
       unsigned short tag_name_len_be = htons(tag_name_len);
 
-      int len = 4096 / (64 / bits);
+      int len = ceil((double)4096 / (64 / bits_new));
       int len_be = htonl(len);
       int total_indices_size =
           1 + 2 + tag_name_len + 4 + len * TAG_LONG.payload_size + 1;
@@ -268,6 +272,35 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
       memcpy(new_indices + indices_offset, &len_be, 4);
       indices_offset += 4;
+
+      if (indices_el != NULL) {
+        ZF_LOGD("Resizing indices from %d to %d", bits_old, bits_new);
+        int old_len = get_int_le(indices_el);
+        for (int i = 0; i < 4096; i++) {
+          int old_idx = i / (64 / bits_old);
+          int old_bit_offset = (i % (64 / bits_old)) * bits_old;
+          int64_t old_block = 0;
+          memcpy(&old_block, indices_el + 4 + old_idx * 8, 8);
+          old_block = *(int64_t *)reverse_endian(&old_block, 8);
+          int64_t old_powof = pow(2, bits_old) - 1;
+          int64_t old_value = (old_block >> old_bit_offset) & old_powof;
+
+          int new_idx = i / (64 / bits_new);
+          int new_bit_offset = (i % (64 / bits_new)) * bits_new;
+          int64_t new_block = 0;
+          memcpy(&new_block, new_indices + indices_offset + new_idx * 8, 8);
+          new_block = *(int64_t *)reverse_endian(&new_block, 8);
+
+          int64_t new_powof = pow(2, bits_new) - 1;
+          int64_t new_bit_mask = new_powof << new_bit_offset;
+          new_block =
+              (new_block & (~new_bit_mask)) | (old_value << new_bit_offset);
+          new_block = *(int64_t *)reverse_endian(&new_block, 8);
+
+          memcpy(new_indices + indices_offset + new_idx * 8, &new_block, 8);
+        }
+      }
+
       indices_offset += len * TAG_LONG.payload_size;
 
       // copy over last byte from block_states at the end
@@ -286,8 +319,6 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
       indices_el = new_indices + 1 + 2 + tag_name_len;
     }
     assert(indices_el != NULL);
-
-    int indicies_len = get_int_le(indices_el);
 
     int min_y = y_pos * 16;
     int max_y = ((y_pos + 1) * 16) - 1;
@@ -328,17 +359,16 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
           ZF_LOGV("Build block: %lld, at: %d", build_block, ch_pos);
 
-          int idx = ch_pos / (64 / bits);
+          int idx = ch_pos / (64 / bits_new);
           int64_t block = 0;
 
           memcpy(&block, indices_el + 4 + idx * 8, 8);
           block = *(int64_t *)reverse_endian(&block, 8);
 
-          int bit_offset = (ch_pos % (64 / bits) * bits);
-          int64_t powof = pow(2, bits) - 1;
+          int bit_offset = (ch_pos % (64 / bits_new) * bits_new);
+          int64_t powof = pow(2, bits_new) - 1;
 
           int64_t bit_mask = powof << bit_offset;
-          /* int64_t new_val = 2; */
           block = (block & (~bit_mask)) | (build_block << bit_offset);
 
           block = *(int64_t *)reverse_endian(&block, 8);
