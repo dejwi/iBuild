@@ -9,10 +9,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-insert_data_t *
-handle_palette(const unsigned char *block_states, const block_build_t *build,
-               const unsigned char *uncomp_data, int *out_mapped_palette_idxs,
-               int *out_palette_len, size_t *out_palette_end_offset) {
+/**
+ * Handles the palette changes for a chunk section.
+ *
+ * @param block_states Pointer to the block states data.
+ * @param build Pointer to the block build structure containing the changes.
+ * @param uncomp_data Pointer to the uncompressed chunk data.
+ * @param out_mapped_palette_idxs Output array for mapped palette indices.
+ * @param out_palette_len Output for the modified length of the palette.
+ * @return Pointer to the insert data structure containing the changes, or NULL
+ * if no changes.
+ */
+insert_data_t *handle_palette(const unsigned char *block_states,
+                              const block_build_t *build,
+                              const unsigned char *uncomp_data,
+                              int *out_mapped_palette_idxs,
+                              int *out_palette_len) {
   insert_data_t *head = NULL;
   insert_data_t *tail = NULL;
   // Fill with empty
@@ -54,7 +66,6 @@ handle_palette(const unsigned char *block_states, const block_build_t *build,
     palette_item_offset +=
         resolve_tag_end_offset(palette + palette_item_offset, &TAG_COMPOUND);
   }
-  *out_palette_end_offset = (palette + palette_item_offset) - uncomp_data;
 
   char **items_to_add = malloc(build->palette_len * sizeof(char *));
   int items_to_add_size = 0;
@@ -213,11 +224,9 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     // Handle palette changes
     int *mapped_palette_idxs = malloc(build->palette_len * sizeof(int));
     int palette_len = 0;
-    size_t palette_end_offset = 0;
 
-    insert_data_t *edit_palette =
-        handle_palette(block_states, build, uncomp_data, mapped_palette_idxs,
-                       &palette_len, &palette_end_offset);
+    insert_data_t *edit_palette = handle_palette(
+        block_states, build, uncomp_data, mapped_palette_idxs, &palette_len);
     if (edit_palette != NULL)
       append_insert_list(&edit_head, &edit_tail, edit_palette);
 
