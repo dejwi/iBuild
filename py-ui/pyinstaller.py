@@ -10,6 +10,7 @@ from PyInstaller.utils.hooks import get_package_paths
 MAKEFILE_DIR = os.path.join(os.path.dirname(__file__), "../nbt-editor")
 HOOKS_DIR = os.path.join(os.path.dirname(__file__), "hooks")
 APP_PATH = os.path.join(os.path.dirname(__file__), "app.py")
+ICON_PATH = os.path.join(os.path.dirname(__file__), "../icon.ico")
 
 
 def compile_c_code():
@@ -59,6 +60,8 @@ def run_pyinstaller():
                 f"{llama_lib_path}:llama_cpp/lib",
                 "--add-data",
                 f"{lib_path}:nbt-editor/build",
+                "--add-data",
+                f"{ICON_PATH}:.",
                 "--name",
                 "iBuild",
                 "--icon=icon.ico",

@@ -71,7 +71,12 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
     def __init__(self, root):
         self.root = root
         root.title("iBuild")
-        root.iconbitmap("icon.ico")
+
+        if getattr(sys, "frozen", False):
+            # Pyinstaller build
+            root.iconbitmap(os.path.join(sys._MEIPASS, "icon.ico"))  # type: ignore
+        else:
+            root.iconbitmap(os.path.join(os.path.dirname(__file__), "../icon.ico"))
 
         # Set theme for non-macos
         if not sys.platform.startswith("darwin"):
