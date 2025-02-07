@@ -95,7 +95,6 @@ insert_data_t *handle_palette(const unsigned char *block_states,
   int new_palette_len = palette_len + items_to_add_size;
   int new_palette_len_be = htonl(new_palette_len);
 
-  // TODO: implement resizing data indices bits size
   bits_new = count_min_bits(new_palette_len - 1);
   if (bits_new < 4)
     bits_new = 4;
@@ -354,6 +353,13 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
           int ch_y = actual_y % 16;
           int ch_z = actual_z % 16;
           int ch_x = actual_x % 16;
+
+          if (ch_x < 0)
+            ch_x += 16;
+          if (ch_z < 0)
+            ch_z += 16;
+          if (ch_y < 0)
+            ch_y += 16;
 
           int ch_pos = ch_y * 16 * 16 + ch_z * 16 + ch_x;
 
