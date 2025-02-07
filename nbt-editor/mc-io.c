@@ -167,11 +167,13 @@ void write_chunk_data(const char *region_path,
   unsigned char *new_uncomp_data =
       insert_data(data, data_size, edit_list, &new_uncomp_size);
 
-  ZF_LOGV("%lu == %lu", data_size, new_uncomp_size);
+  ZF_LOGV("Uncompressed data size: %lu", new_uncomp_size);
 
   size_t new_comp_size = 0;
   unsigned char *new_comp_data =
       compress_zlib(new_uncomp_data, new_uncomp_size, &new_comp_size);
+
+  ZF_LOGV("Compressed data size: %lu", new_comp_size);
 
   // Calculate the new size padded to the nearest multiple of 4KiB
   size_t padded_size = ((new_comp_size + 5 + 4095) / 4096) * 4096;
@@ -195,8 +197,12 @@ void write_chunk_data(const char *region_path,
       chunk_loc->offset * SECTOR_SIZE + chunk_loc->sector_count * SECTOR_SIZE;
   size_t new_chunk_end = chunk_loc->offset * SECTOR_SIZE + padded_size;
 
+  ZF_LOGV("Old chunk end: %lu, New chunk end: %lu", old_chunk_end,
+          new_chunk_end);
+
   if (new_chunk_end > file_size) {
     // Extend the file size if the new chunk end exceeds the current file size
+    ZF_LOGV("Extending file size to %lu", new_chunk_end);
     if (ftruncate(fileno(fRegion), new_chunk_end) != 0) {
       ZF_LOGE("Failed to resize region file");
       fclose(fRegion);
@@ -204,6 +210,7 @@ void write_chunk_data(const char *region_path,
     }
   } else if (new_chunk_end > old_chunk_end) {
     // Move data after the chunk to make space for the new chunk size
+    ZF_LOGV("Moving data to make space for new chunk size");
     size_t move_size = file_size - old_chunk_end;
     unsigned char *buffer = malloc(move_size);
     fseek(fRegion, old_chunk_end, SEEK_SET);
@@ -213,6 +220,7 @@ void write_chunk_data(const char *region_path,
     free(buffer);
   } else if (new_chunk_end < old_chunk_end) {
     // Move data after the chunk to shrink the space for the new chunk size
+    ZF_LOGV("Shrinking space for new chunk size");
     size_t move_size = file_size - old_chunk_end;
     unsigned char *buffer = malloc(move_size);
     fseek(fRegion, old_chunk_end, SEEK_SET);
@@ -230,19 +238,23 @@ void write_chunk_data(const char *region_path,
 
   // Write the new chunk data
   fseek(fRegion, chunk_loc->offset * SECTOR_SIZE, SEEK_SET);
-  int new_size = htonl(new_comp_size + 1);
-  fwrite(&new_size, 4, 1, fRegion);
-  fputc(2, fRegion); // Compression type
+  int new_size_be = htonl(new_comp_size + 1);
+  fwrite(&new_size_be, 4, 1, fRegion);
+
+  // Move over compression byte
+  fseek(fRegion, 1, SEEK_CUR);
+
   fwrite(new_comp_data, new_comp_size, 1, fRegion);
 
   // Pad the remaining space with zeros
-  size_t padding_size = padded_size - (new_comp_size + 5);
-  unsigned char *padding = calloc(1, padding_size);
-  fwrite(padding, padding_size, 1, fRegion);
-  free(padding);
+  /* size_t padding_size = padded_size - (new_comp_size + 5); */
+  /* unsigned char *padding = calloc(1, padding_size); */
+  /* fwrite(padding, padding_size, 1, fRegion); */
+  /* free(padding); */
 
   // Update the sector count in the chunk location
   int new_sector_count = padded_size / SECTOR_SIZE;
+  ZF_LOGV("Sector count %d -> %d", chunk_loc->sector_count, new_sector_count);
   chunk_location_t new_chunk_loc = *chunk_loc;
   new_chunk_loc.sector_count = new_sector_count;
 
