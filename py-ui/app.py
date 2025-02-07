@@ -238,7 +238,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
     def update_saves_folder(self, folder, silent=False):
         if folder:
-            self.saves_folder_label.config(text=folder)
+            display_folder = folder if len(folder) <= 40 else "..." + folder[-40:]
+            self.saves_folder_label.config(text=display_folder)
             valid_saves = []
             self.valid_saves_paths = []
             # Scan the folder for subdirectories containing level.dat
