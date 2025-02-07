@@ -2,6 +2,7 @@
 #include "mc-io.h"
 #include "nbt.h"
 #include "nums.h"
+#include "zf_log.h"
 #include "zlib-utils.h"
 #include <assert.h>
 #include <math.h>
@@ -34,15 +35,13 @@ insert_data_t *handle_palette(const unsigned char *block_states,
   unsigned char *palette = find_data_tag_comp("palette", block_states);
   assert(palette != NULL);
 
-  printf("test\n");
   int palette_len = get_int_le(palette + 1);
   *out_palette_len = palette_len;
-  printf("palette len: %d\n", palette_len);
+  ZF_LOGD("palette len: %d", palette_len);
 
   // +1 for LIST element type and +4 for LIST length
   size_t palette_item_offset = 5;
   for (size_t j = 0; j < palette_len; j++) {
-    printf("pitem %zu\n", j);
     print_comp_fields(palette + palette_item_offset, 1);
 
     unsigned char *name_el =
@@ -83,7 +82,7 @@ insert_data_t *handle_palette(const unsigned char *block_states,
     return NULL;
   }
 
-  printf("Palette needs updating\n");
+  ZF_LOGD("Palette needs updating");
   int new_palette_len = palette_len + items_to_add_size;
   int new_palette_len_be = htonl(new_palette_len);
 
@@ -132,6 +131,7 @@ insert_data_t *handle_palette(const unsigned char *block_states,
 
   int edit_items_offset = 1;
   for (int j = 0; j < items_to_add_size; j++) {
+    ZF_LOGD("Item to add = %s", items_to_add[j]);
     // TAG_ID
     memcpy(edit_items->data_insert + edit_items_offset, &TAG_STRING.id, 1);
     edit_items_offset++;
@@ -171,6 +171,7 @@ insert_data_t *handle_palette(const unsigned char *block_states,
 
 int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
                const block_build_t *build) {
+  ZF_LOGD("Chunk edit (%d, %d)", x_chunk, z_chunk);
   size_t chunk_header_offset = 4 * ((x_chunk & 31) + (z_chunk & 31) * 32);
   chunk_location_t chunk_loc;
   insert_data_t *edit_head = NULL;
@@ -217,7 +218,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     if (y_pos < min_y_sc || y_pos > max_y_sc)
       continue;
 
-    printf("Editing y_section:%d\n", y_pos);
+    ZF_LOGD("Editing y_section:%d", y_pos);
     unsigned char *block_states = find_data_tag_comp("block_states", s_item);
     assert(block_states != NULL);
 
@@ -240,7 +241,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
     unsigned char *indices_el = find_data_tag_comp("data", block_states);
     if (indices_el == NULL) {
-      printf("Creating indices\n");
+      ZF_LOGD("Creating indices");
       size_t block_states_end_offset =
           resolve_tag_end_offset(block_states, &TAG_COMPOUND);
       block_states_end_offset =
@@ -325,7 +326,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
 
           int ch_pos = ch_y * 16 * 16 + ch_z * 16 + ch_x;
 
-          /* printf("Build block: %lld, at: %d\n", build_block, ch_pos); */
+          ZF_LOGV("Build block: %lld, at: %d", build_block, ch_pos);
 
           int idx = ch_pos / (64 / bits);
           int64_t block = 0;

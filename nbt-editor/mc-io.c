@@ -1,4 +1,5 @@
 #include "mc-io.h"
+#include "zf_log.h"
 #include "zlib-utils.h"
 #include <stdio.h>
 #include <string.h>
@@ -44,17 +45,17 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
 
   const insert_data_t *temp = payload;
   while (temp) {
-    printf("insert off: %zu\n", temp->start_offset);
+    ZF_LOGV("insert off: %zu", temp->start_offset);
     total_size_diff +=
         temp->start_offset - temp->end_offset + temp->data_size - 1;
 
     temp = temp->next;
   }
-  printf("size_diff_insert: %d\n", total_size_diff);
+  ZF_LOGV("size_diff_insert: %d", total_size_diff);
 
   unsigned char *buffer = malloc(size + total_size_diff);
   if (buffer == NULL) {
-    fprintf(stderr, "Failed to allocate buffer for insert data\n");
+    ZF_LOGE("Failed to allocate buffer for insert data");
     exit(1);
   }
 
@@ -62,7 +63,7 @@ unsigned char *insert_data(const unsigned char *data, size_t size,
   const insert_data_t *prev = NULL;
 
   while (temp) {
-    printf("insert data\n");
+    ZF_LOGV("insert data");
     if (temp->start_offset != 0 && prev == NULL) {
       memcpy(buffer + buffer_offset, data + data_offset,
              temp->start_offset - data_offset);
@@ -104,7 +105,7 @@ int load_chunk_data(const char *region_path, size_t header_offset,
 
   fseek(fRegion, header_offset, SEEK_SET);
   if (fread(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion) != 1) {
-    fprintf(stderr, "Error reading\n");
+    ZF_LOGE("Error reading");
     exit(1);
   }
   create_chunk_location(&chunk_loc_raw, out_loc);
@@ -117,25 +118,25 @@ int load_chunk_data(const char *region_path, size_t header_offset,
   int comp_data_size = 0;
   int comp_type = 0;
   if (fread(&comp_data_size, sizeof(comp_data_size), 1, fRegion) != 1) {
-    fprintf(stderr, "Error reading payload len");
+    ZF_LOGE("Error reading payload len");
     exit(1);
   }
   // -1 accounting for compression type byte
   comp_data_size = ntohl(comp_data_size) - 1;
-  printf("read size: %d\n", comp_data_size + 1);
+  ZF_LOGV("read size: %d", comp_data_size + 1);
 
   if (fread(&comp_type, 1, 1, fRegion) != 1) {
-    fprintf(stderr, "Error reading compression type");
+    ZF_LOGE("Error reading compression type");
     exit(1);
   }
   if (comp_type != 2) {
-    fprintf(stderr, "Unhandled compression type = %d", comp_type);
+    ZF_LOGE("Unhandled compression type = %d", comp_type);
     exit(1);
   }
 
   unsigned char *comp_data = malloc(comp_data_size);
   if (fread(comp_data, comp_data_size, 1, fRegion) != 1) {
-    fprintf(stderr, "Error reading payload content");
+    ZF_LOGE("Error reading payload content");
     exit(1);
   }
   fclose(fRegion);
@@ -145,7 +146,7 @@ int load_chunk_data(const char *region_path, size_t header_offset,
       decompress_zlib(comp_data, comp_data_size, &uncomp_size);
 
   if (!uncomp_data) {
-    fprintf(stderr, "Error uncompressing data\n");
+    ZF_LOGE("Error uncompressing data\n");
     exit(1);
   }
 
@@ -164,7 +165,7 @@ void write_chunk_data(const char *region_path,
   unsigned char *new_uncomp_data =
       insert_data(data, data_size, edit_list, &new_uncomp_size);
 
-  printf("%lu == %lu\n", data_size, new_uncomp_size);
+  ZF_LOGV("%lu == %lu", data_size, new_uncomp_size);
 
   size_t new_comp_size = 0;
   unsigned char *new_comp_data =
@@ -174,7 +175,7 @@ void write_chunk_data(const char *region_path,
   FILE *fRegion = fopen(region_path, "r+b");
   fseek(fRegion, chunk_loc->offset * SECTOR_SIZE, SEEK_SET);
 
-  printf("newsize: %zu\n", new_comp_size);
+  ZF_LOGV("newsize: %zu", new_comp_size);
   // account for compression byte
   int new_size = htonl(new_comp_size + 1);
   fwrite(&new_size, 4, 1, fRegion);

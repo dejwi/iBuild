@@ -1,4 +1,5 @@
 #include "zlib-utils.h"
+#include "zf_log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +41,7 @@ unsigned char *decompress_zlib(const unsigned char *compressed_data,
   stream.avail_in = compressed_size;
 
   if (inflateInit(&stream) != Z_OK) {
-    fprintf(stderr, "Failed to initialize zlib.\n");
+    ZF_LOGE("Failed to initialize zlib.");
     return NULL;
   }
 
@@ -51,7 +52,7 @@ unsigned char *decompress_zlib(const unsigned char *compressed_data,
   do {
     ret = inflate(&stream, Z_NO_FLUSH);
     if (ret != Z_OK && ret != Z_STREAM_END && ret != Z_BUF_ERROR) {
-      fprintf(stderr, "Decompression failed with error code: %d\n", ret);
+      ZF_LOGE("Decompression failed with error code: %d", ret);
       inflateEnd(&stream);
       free_blocks(head);
       return NULL;
@@ -61,14 +62,14 @@ unsigned char *decompress_zlib(const unsigned char *compressed_data,
       // Create a new block
       block_t *new_block = malloc(sizeof(block_t));
       if (!new_block) {
-        fprintf(stderr, "Memory allocation failed.\n");
+        ZF_LOGE("Memory allocation failed.");
         inflateEnd(&stream);
         free_blocks(head);
         return NULL;
       }
       new_block->data = malloc(BLOCK_SIZE);
       if (!new_block->data) {
-        fprintf(stderr, "Memory allocation failed.\n");
+        ZF_LOGE("Memory allocation failed.");
         free(new_block);
         inflateEnd(&stream);
         free_blocks(head);
@@ -91,7 +92,7 @@ unsigned char *decompress_zlib(const unsigned char *compressed_data,
   // Combine all blocks into a single buffer
   unsigned char *combined_data = malloc(*decompressed_size);
   if (!combined_data) {
-    fprintf(stderr, "Memory allocation failed.\n");
+    ZF_LOGE("Memory allocation failed.");
     free_blocks(head);
     return NULL;
   }
@@ -116,7 +117,7 @@ unsigned char *compress_zlib(const unsigned char *data, size_t size,
 
   unsigned char *buffer = malloc(size);
   if (buffer == NULL) {
-    fprintf(stderr, "Failed to allocate buffer for data compression");
+    ZF_LOGE("Failed to allocate buffer for data compression");
     exit(1);
   }
 
@@ -129,15 +130,15 @@ unsigned char *compress_zlib(const unsigned char *data, size_t size,
   stream.next_out = buffer;
 
   if (deflateInit(&stream, Z_DEFAULT_COMPRESSION) != Z_OK) {
-    fprintf(stderr, "DeflateInit failed\n");
+    ZF_LOGE("DeflateInit failed");
     exit(1);
   }
   if (deflate(&stream, Z_FINISH) != Z_STREAM_END) {
-    fprintf(stderr, "Deflate failed\n");
+    ZF_LOGE("Deflate failed");
     exit(1);
   }
   if (deflateEnd(&stream) != Z_OK) {
-    fprintf(stderr, "DeflateEnd failed\n");
+    ZF_LOGE("DeflateEnd failed");
     exit(1);
   }
 

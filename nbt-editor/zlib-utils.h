@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdlib.h>
 
 unsigned char *decompress_zlib(const unsigned char *compressed_data,

@@ -1,9 +1,10 @@
 #include "nbt.h"
 #include "nums.h"
+#include "zf_log.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 // Definitions of nbt tag constants
 #define NEW_NBT(name, type, size) const nbt_helper_t name = {type, size, #name};
@@ -46,7 +47,7 @@ size_t resolve_tag_end_offset(const unsigned char *data,
   if (start_from_tag == NULL) {
     tag = get_helper_tag(data[offset]);
     if (tag == NULL) {
-      fprintf(stderr, "Tag not identified resolve-tag id: %d\n", data[offset]);
+      ZF_LOGE("Tag not identified resolve-tag id: %d", data[offset]);
       exit(1);
     }
     offset++;
@@ -54,11 +55,6 @@ size_t resolve_tag_end_offset(const unsigned char *data,
     unsigned short name_len = get_ushort_le(data + offset);
     offset += 2;
 
-    /* char *name = malloc(name_len + 1); */
-    /* memcpy(name, data + offset, name_len); */
-    /* name[name_len] = '\0'; */
-    /* printf("Resolve offset: %s\n", name); */
-    /* free(name); */
     offset += name_len;
   }
 
@@ -76,7 +72,7 @@ size_t resolve_tag_end_offset(const unsigned char *data,
   } else if (tag->id == TAG_LIST.id) {
     const nbt_helper_t *list_el_tag = get_helper_tag(data[offset]);
     if (list_el_tag == NULL) {
-      fprintf(stderr, "Tag not identified list-el id: %d", data[offset]);
+      ZF_LOGE("Tag not identified list-el id: %d", data[offset]);
       exit(1);
     }
     offset += 1;
@@ -106,8 +102,7 @@ size_t resolve_tag_end_offset(const unsigned char *data,
   } else if (tag->id == TAG_END.id) {
     offset++;
   } else {
-    fprintf(stderr,
-            "Somehow resolve end tag offset didn't match element, offset: %zu",
+    ZF_LOGE("Somehow resolve end tag offset didn't match element, offset: %zu",
             offset);
     exit(1);
   }
@@ -121,7 +116,7 @@ unsigned char *find_data_tag_comp(const char *search_name,
   for (;;) {
     const nbt_helper_t *tag = get_helper_tag(data[offset]);
     if (tag == NULL) {
-      fprintf(stderr, "Tag not identified find-data id: %d", data[offset]);
+      ZF_LOGE("Tag not identified find-data id: %d", data[offset]);
       exit(1);
     }
     if (tag->id == TAG_END.id)
@@ -136,10 +131,6 @@ unsigned char *find_data_tag_comp(const char *search_name,
     memcpy(name, data + offset, name_len);
     name[name_len] = '\0';
     offset += name_len;
-
-    // debug
-    /* printf("searching at %s;nlen: %d;\n%s==%s\n", tag->name, name_len, */
-    /*        search_name, name); */
 
     int cmp_result = strcmp(name, search_name);
     free(name);
@@ -158,7 +149,7 @@ size_t print_comp_fields(const unsigned char *data, int nest_depth) {
   while (data[offset] != TAG_END.id) {
     const nbt_helper_t *tag = get_helper_tag(data[offset]);
     if (tag == NULL) {
-      fprintf(stderr, "Tag not identified print-comp id: %d", data[offset]);
+      ZF_LOGE("Tag not identified print-comp id: %d", data[offset]);
       exit(1);
     }
     offset++;
@@ -172,9 +163,9 @@ size_t print_comp_fields(const unsigned char *data, int nest_depth) {
     offset += name_len;
 
     if (tag->id == TAG_COMPOUND.id && nest_depth > 0) {
-      printf("%s = COMPOUND START\n", name);
+      ZF_LOGD("%s = COMPOUND START", name);
       offset += print_comp_fields(data + offset, nest_depth - 1);
-      printf("%s = COMPOUND END\n", name);
+      ZF_LOGD("%s = COMPOUND END", name);
     } else if (tag->id == TAG_STRING.id) {
       unsigned short tag_val_len = get_ushort_le(data + offset);
       offset += 2;
@@ -182,13 +173,13 @@ size_t print_comp_fields(const unsigned char *data, int nest_depth) {
       char *tag_val = malloc(tag_val_len + 1);
       memcpy(tag_val, data + offset, tag_val_len);
       tag_val[tag_val_len] = '\0';
-      printf("%s = '%s'\n", name, tag_val);
+      ZF_LOGD("%s = '%s'", name, tag_val);
 
       free(tag_val);
 
       offset += tag_val_len;
     } else {
-      printf("%s = %s\n", name, tag->name);
+      ZF_LOGD("%s = %s\n", name, tag->name);
       offset += resolve_tag_end_offset(data + offset, tag);
     }
 

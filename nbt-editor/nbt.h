@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -52,7 +54,7 @@ size_t resolve_tag_end_offset(const unsigned char *data,
                               const nbt_helper_t *start_from_tag);
 
 /**
- * Prints the fields of a compound tag.
+ * Prints the fields of a compound tag (DEBUG log level).
  *
  * @param data The data buffer containing the NBT data.
  * @param nest_depth The depth of nesting to print.

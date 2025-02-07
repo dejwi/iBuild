@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdlib.h>
 
 unsigned short get_ushort_le(const unsigned char *data);

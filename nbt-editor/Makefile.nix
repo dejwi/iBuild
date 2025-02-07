@@ -1,5 +1,5 @@
 CC = clang
-CFLAGS = -I. -fPIC
+CFLAGS = -I. -fPIC -DZF_LOG_DEF_LEVEL=ZF_LOG_DEBUG
 LDFLAGS = -shared -lz
 
 BUILD_DIR = build

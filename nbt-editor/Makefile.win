@@ -6,7 +6,7 @@ CC = x86_64-w64-mingw32-gcc
 BUILD_DIR = build
 
 # Compilation flags. Note: -shared is needed only at link time.
-CFLAGS = -I. -m64 -D_DLL -D_USRDLL -DWIN32 -D_WIN32
+CFLAGS = -I. -m64 -D_DLL -D_USRDLL -DWIN32 -D_WIN32 -DZF_LOG_DEF_LEVEL=ZF_LOG_DEBUG
 # Linker flags (for output options)
 LDFLAGS = -shared -m64 -Wl,--out-implib,$(BUILD_DIR)/libmc.a
 # Libraries to link (placed after object files)
