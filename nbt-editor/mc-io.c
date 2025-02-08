@@ -6,6 +6,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include <winsock.h>
+#else
+#include <arpa/inet.h>
+#endif
+
 void create_chunk_location(const chunk_location_raw_t *from,
                            chunk_location_t *to) {
   to->offset = from->offset[0] << 16 | from->offset[1] << 8 | from->offset[2];
@@ -246,6 +252,7 @@ void write_chunk_data(const char *region_path,
 
   fwrite(new_comp_data, new_comp_size, 1, fRegion);
 
+  // Not sure if it causes to break saves
   // Pad the remaining space with zeros
   /* size_t padding_size = padded_size - (new_comp_size + 5); */
   /* unsigned char *padding = calloc(1, padding_size); */
@@ -271,11 +278,11 @@ void write_chunk_data(const char *region_path,
       chunk_loc_raw.offset[0] = (temp_chunk_loc.offset >> 16) & 0xFF;
       chunk_loc_raw.offset[1] = (temp_chunk_loc.offset >> 8) & 0xFF;
       chunk_loc_raw.offset[2] = temp_chunk_loc.offset & 0xFF;
-      fseek(fRegion, -sizeof(chunk_loc_raw), SEEK_CUR);
+      fseek(fRegion, -(long)sizeof(chunk_loc_raw), SEEK_CUR);
       fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
     } else if (temp_chunk_loc.offset == chunk_loc->offset) {
       chunk_loc_raw.sector_count = new_sector_count;
-      fseek(fRegion, -sizeof(chunk_loc_raw), SEEK_CUR);
+      fseek(fRegion, -(long)sizeof(chunk_loc_raw), SEEK_CUR);
       fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
     }
   }
