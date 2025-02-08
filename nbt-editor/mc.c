@@ -3,7 +3,6 @@
 #include "nbt.h"
 #include "nums.h"
 #include "zf_log.h"
-#include "zlib-utils.h"
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
@@ -17,7 +16,8 @@
  * @param build Pointer to the block build structure containing the changes.
  * @param uncomp_data Pointer to the uncompressed chunk data.
  * @param out_mapped_palette_idxs Output array for mapped palette indices.
- * @param out_palette_len Output for the modified length of the palette.
+ * @param out_bits_old Output for the original bits size
+ * @param out_bits_old Output for the new bits size (after palette resize)
  * @return Pointer to the insert data structure containing the changes, or NULL
  * if no changes.
  */
@@ -58,18 +58,14 @@ insert_data_t *handle_palette(const unsigned char *block_states,
     assert(name_el != NULL);
 
     unsigned short name_len = get_ushort_le(name_el);
-    char *name = malloc(name_len + 1);
-    memcpy(name, name_el + 2, name_len);
-    name[name_len] = '\0';
 
     // Fill in already existing blocks
     for (int k = 0; k < build->palette_len; k++) {
-      if (strcmp(name, build->palette[k]) == 0) {
+      if (strncmp((char *)name_el + 2, build->palette[k], name_len) == 0) {
         out_mapped_palette_idxs[k] = j;
         break;
       }
     }
-    free(name);
 
     palette_item_offset +=
         resolve_tag_end_offset(palette + palette_item_offset, &TAG_COMPOUND);
@@ -272,6 +268,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
       memcpy(new_indices + indices_offset, &len_be, 4);
       indices_offset += 4;
 
+      // Bits size changed - resize indices array
       if (indices_el != NULL) {
         ZF_LOGD("Resizing indices from %d to %d", bits_old, bits_new);
         int old_len = get_int_le(indices_el);
@@ -328,6 +325,7 @@ int chunk_edit(const char *region_path, int x_chunk, int z_chunk,
     int min_x = x_chunk * 16;
     int max_x = ((x_chunk + 1) * 16) - 1;
 
+    // Insert build blocks into indices array
     for (int y = 0; y < build->y_size; y++) {
       for (int z = 0; z < build->z_size; z++) {
         for (int x = 0; x < build->x_size; x++) {
