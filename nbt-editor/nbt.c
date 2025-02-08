@@ -7,7 +7,7 @@
 #include <string.h>
 
 // Definitions of nbt tag constants
-#define NEW_NBT(name, type, size) const nbt_helper_t name = {type, size, #name};
+#define NEW_NBT(name, id, size) const nbt_helper_t name = {id, size, #name};
 
 NEW_NBT(TAG_END, 0, -1)
 NEW_NBT(TAG_BYTE, 1, 1)
@@ -31,12 +31,11 @@ static const nbt_helper_t *all_tags[] = {
     &TAG_COMPOUND, &TAG_INT_ARRAY, &TAG_LONG_ARRAY};
 
 const nbt_helper_t *get_helper_tag(uint8_t id) {
-  for (int i = 0; i < sizeof(all_tags) / sizeof(all_tags[0]); i++) {
-    if (all_tags[i]->id == id) {
-      return all_tags[i];
-    }
-  }
-  return NULL;
+  // Tags are ordered by id starting from 0 - so it's ideal for indexing
+  if (id >= sizeof(all_tags) / sizeof(all_tags[0]))
+    return NULL;
+
+  return all_tags[id];
 }
 
 size_t resolve_tag_end_offset(const unsigned char *data,
@@ -127,13 +126,9 @@ unsigned char *find_data_tag_comp(const char *search_name,
     unsigned short name_len = get_ushort_le(data + offset);
     offset += 2;
 
-    char *name = malloc(name_len + 1);
-    memcpy(name, data + offset, name_len);
-    name[name_len] = '\0';
+    int cmp_result = strncmp((char *)data + offset, search_name, name_len);
     offset += name_len;
 
-    int cmp_result = strcmp(name, search_name);
-    free(name);
     if (cmp_result == 0) {
       return (unsigned char *)(data + offset);
     }
