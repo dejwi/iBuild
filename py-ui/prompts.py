@@ -178,3 +178,7 @@ Position of windows, doors, balconies, and chimneys.
 
 This description must be structured clearly so the build can be fully reconstructed from text alone, focusing primarily on the Y-by-Y breakdown of block placement.
 """
+
+
+def janus_gen_image_prompt(build: str):
+    return f"minecraft structure {build}. Structure is created in the video game minecraft."

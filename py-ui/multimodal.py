@@ -7,7 +7,7 @@ import torch
 from janus.models import MultiModalityCausalLM, VLChatProcessor
 from janus.models.modeling_vlm import MultiModalityCausalLM
 from PIL import Image
-from prompts import janus_image_analyze_prompt
+from prompts import janus_gen_image_prompt, janus_image_analyze_prompt
 from transformers import AutoConfig, AutoModelForCausalLM
 from utils import clear_torch_cache, device, dtype
 
@@ -44,9 +44,7 @@ class Mixin:
 
         # Generate image
         self.update_progress("Generating image", 15)
-        image = self.generate_image(
-            f"minecraft {prompt}. Build is created in the video game minecraft."
-        )
+        image = self.generate_image(janus_gen_image_prompt(prompt))
 
         # Generate description
         self.update_progress("Generating description for the image", 40)
