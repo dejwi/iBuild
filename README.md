@@ -124,10 +124,12 @@ flowchart TB
 - Python
 - MinGW-w64 for the C code build
 
-### Mac/Linux Requirements
+### Mac Requirements
 
 - A suitable C compiler (Clang, GCC, etc.)
 - Python
+
+(Linux was not tested)
 
 ### Install Dependencies
 
