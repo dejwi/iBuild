@@ -9,7 +9,7 @@ from janus.models.modeling_vlm import MultiModalityCausalLM
 from PIL import Image
 from prompts import janus_gen_image_prompt, janus_image_analyze_prompt
 from transformers import AutoConfig, AutoModelForCausalLM
-from utils import clear_torch_cache, device, dtype
+from utils import clear_torch_cache, device, dtype, get_path_exc
 
 
 class Mixin:
@@ -50,7 +50,7 @@ class Mixin:
         self.update_progress("Generating description for the image", 40)
         description = self.multimodal_understanding(image, janus_image_analyze_prompt)
 
-        with open("./generated_samples/desc_log.txt", "w") as f:
+        with open(get_path_exc("./generated_samples/desc_log.txt"), "w") as f:
             f.write(description)
 
         # Unload model and clean up
@@ -218,7 +218,7 @@ class Mixin:
                 height // 16 * 16,
                 parallel_size=parallel_size,
             )
-            os.makedirs("./generated_samples", exist_ok=True)
-            save_path = os.path.join("./generated_samples", "img_{}.jpg".format(0))
+            os.makedirs(get_path_exc("./generated_samples"), exist_ok=True)
+            save_path = get_path_exc("./generated_samples/img.jpg")
             Image.fromarray(images[0]).save(save_path)
             return images[0]

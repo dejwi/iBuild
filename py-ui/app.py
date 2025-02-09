@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import sys
 import threading
@@ -16,6 +17,7 @@ from janus.models import MultiModalityCausalLM
 from nbt_link import insert_build_save
 from prompts import default_dimensions_prompt
 from tqdm.auto import tqdm
+from utils import get_path_exc
 
 AI_PRESETS = [
     {
@@ -79,7 +81,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             root.iconbitmap(os.path.join(os.path.dirname(__file__), "../icon.ico"))
 
         # Set theme for non-macos
-        if not sys.platform.startswith("darwin"):
+        if sys.platform != "darwin":
             sv_ttk.set_theme("dark")
 
         if torch.cuda.is_available():
@@ -91,9 +93,11 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         # Model paths
         self.janus_model_path = "deepseek-ai/Janus-Pro-1B"
         self.llm_model_path = AI_PRESETS[0]["llm"]
-        self.janus_model_local_path = os.path.join("./models", self.janus_model_path)
-        self.llm_model_local_path = os.path.join(
-            "./models", self.llm_model_path["filename"]
+        self.janus_model_local_path = get_path_exc(
+            os.path.join("./models", self.janus_model_path)
+        )
+        self.llm_model_local_path = get_path_exc(
+            os.path.join("./models", self.llm_model_path["filename"])
         )
 
         # Model placeholders
@@ -278,8 +282,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             AI_PRESETS[0]["llm"] = selected["llm"].copy()
 
         self.llm_model_path = selected["llm"]
-        self.llm_model_local_path = os.path.join(
-            "./models", self.llm_model_path["filename"]
+        self.llm_model_local_path = get_path_exc(
+            os.path.join("./models", self.llm_model_path["filename"])
         )
 
     def get_positions(self):
@@ -302,7 +306,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                 "No valid saves.",
             )
             return
-        if not exists("./generated_samples/llm_clean.txt"):
+        if not exists(get_path_exc("./generated_samples/llm_clean.txt")):
             messagebox.showwarning(
                 "Error inserting build",
                 "./generated_samples/llm_clean.txt doesn't exist",
@@ -314,7 +318,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             return
 
         try:
-            f = open("./generated_samples/llm_clean.txt", "r")
+            f = open(get_path_exc("./generated_samples/llm_clean.txt"), "r")
             data = f.read()
             insert_build_save(
                 data,
@@ -352,7 +356,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
             self.download_model(
                 repo_id=self.llm_model_path["repo_id"],
                 filename=self.llm_model_path["filename"],
-                local_dir="./models",
+                local_dir=get_path_exc("./models"),
             )
 
             user_prompt = self.prompt_text.get("1.0", "end-1c")
@@ -485,8 +489,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         }
 
         self.llm_model_path = AI_PRESETS[0]["llm"]
-        self.llm_model_local_path = os.path.join(
-            "./models", self.llm_model_path["filename"]
+        self.llm_model_local_path = get_path_exc(
+            os.path.join("./models", self.llm_model_path["filename"])
         )
 
         self.settings_win.destroy()
@@ -515,8 +519,9 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                     if self.format_dict["rate"]
                     else 0.001
                 )
+                desc = self.desc if "desc" in self.__dict__ else "Downloading"
                 update_progress(
-                    f"{self.desc}: {int(downloaded)}/{int(total_size)} MB Speed: {speed:.2f} MB/s",
+                    f"{desc}: {int(downloaded)}/{int(total_size)} MB Speed: {speed:.2f} MB/s",
                     (self.n / self.total) * 100,
                 )
 
@@ -545,6 +550,7 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     root = tk.Tk()
     app = AIApplication(root)
     root.mainloop()

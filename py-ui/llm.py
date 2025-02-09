@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 from llama_cpp import Llama
 from prompts import llm_system_prompt
+from utils import get_path_exc
 
 
 class Mixin:
@@ -37,9 +38,9 @@ class Mixin:
         text: str = output["choices"][0]["message"]["content"]  # type: ignore
         cleaned_text = re.sub(r".*?</think>\s*", "", text, flags=re.DOTALL).strip()
 
-        with open("./generated_samples/llm_full.txt", "w") as f:
+        with open(get_path_exc("./generated_samples/llm_full.txt"), "w") as f:
             f.write(text)
-        with open("./generated_samples/llm_clean.txt", "w") as f:
+        with open(get_path_exc("./generated_samples/llm_clean.txt"), "w") as f:
             f.write(cleaned_text)
 
         del llm
