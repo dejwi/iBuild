@@ -14,6 +14,7 @@
 
 void create_chunk_location(const chunk_location_raw_t *from,
                            chunk_location_t *to) {
+  to->offset = 0;
   to->offset = from->offset[0] << 16 | from->offset[1] << 8 | from->offset[2];
   to->sector_count = from->sector_count;
 }
@@ -107,6 +108,8 @@ int load_chunk_data(const char *region_path, size_t header_offset,
   FILE *fRegion;
   // Open a file in read mode
   fRegion = fopen(region_path, "rb");
+  ZF_LOGV("REGION_PATH = %s", region_path);
+  ZF_LOGV("HEADER_OFFSET = %zu", header_offset);
 
   chunk_location_raw_t chunk_loc_raw;
   insert_data_t *edit_list = NULL;
@@ -203,6 +206,8 @@ void write_chunk_data(const char *region_path,
       chunk_loc->offset * SECTOR_SIZE + chunk_loc->sector_count * SECTOR_SIZE;
   size_t new_chunk_end = chunk_loc->offset * SECTOR_SIZE + padded_size;
 
+  ZF_LOGV("chunk offset = %d", chunk_loc->offset);
+
   ZF_LOGV("Old chunk end: %lu, New chunk end: %lu", old_chunk_end,
           new_chunk_end);
 
@@ -262,28 +267,43 @@ void write_chunk_data(const char *region_path,
   // Update the sector count in the chunk location
   int new_sector_count = padded_size / SECTOR_SIZE;
   ZF_LOGV("Sector count %d -> %d", chunk_loc->sector_count, new_sector_count);
-  chunk_location_t new_chunk_loc = *chunk_loc;
-  new_chunk_loc.sector_count = new_sector_count;
 
-  // Update the region file header
-  fseek(fRegion, 0, SEEK_SET);
-  for (int i = 0; i < 1024; i++) {
-    chunk_location_raw_t chunk_loc_raw;
-    fread(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
-    chunk_location_t temp_chunk_loc;
-    create_chunk_location(&chunk_loc_raw, &temp_chunk_loc);
+  if (new_sector_count != chunk_loc->sector_count) {
+    // Update the region file header
+    fseek(fRegion, 0, SEEK_SET);
+    for (int i = 0; i < 1024; i++) {
+      // 1024 chunks in header - each 4 bytes
+      size_t header_pos = i * sizeof(chunk_location_raw_t);
+      fseek(fRegion, header_pos, SEEK_SET);
 
-    if (temp_chunk_loc.offset > chunk_loc->offset) {
-      temp_chunk_loc.offset += new_sector_count - chunk_loc->sector_count;
-      chunk_loc_raw.offset[0] = (temp_chunk_loc.offset >> 16) & 0xFF;
-      chunk_loc_raw.offset[1] = (temp_chunk_loc.offset >> 8) & 0xFF;
-      chunk_loc_raw.offset[2] = temp_chunk_loc.offset & 0xFF;
-      fseek(fRegion, -(long)sizeof(chunk_loc_raw), SEEK_CUR);
-      fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
-    } else if (temp_chunk_loc.offset == chunk_loc->offset) {
-      chunk_loc_raw.sector_count = new_sector_count;
-      fseek(fRegion, -(long)sizeof(chunk_loc_raw), SEEK_CUR);
-      fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+      chunk_location_raw_t chunk_loc_raw;
+      if (fread(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion) != 1) {
+        ZF_LOGE("Error reading header at index %d", i);
+        break;
+      }
+
+      chunk_location_t temp_chunk_loc;
+      create_chunk_location(&chunk_loc_raw, &temp_chunk_loc);
+
+      // Skip empty headers
+      if (temp_chunk_loc.offset == 0) {
+        continue;
+      }
+
+      if (temp_chunk_loc.offset == chunk_loc->offset) {
+        // Update the sector count for the matching header
+        chunk_loc_raw.sector_count = new_sector_count;
+        fseek(fRegion, header_pos, SEEK_SET);
+        fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+      } else if (temp_chunk_loc.offset > chunk_loc->offset) {
+        // Update offsets for chunks after the modified one
+        temp_chunk_loc.offset += new_sector_count - chunk_loc->sector_count;
+        chunk_loc_raw.offset[0] = (temp_chunk_loc.offset >> 16) & 0xFF;
+        chunk_loc_raw.offset[1] = (temp_chunk_loc.offset >> 8) & 0xFF;
+        chunk_loc_raw.offset[2] = temp_chunk_loc.offset & 0xFF;
+        fseek(fRegion, header_pos, SEEK_SET);
+        fwrite(&chunk_loc_raw, sizeof(chunk_loc_raw), 1, fRegion);
+      }
     }
   }
 
