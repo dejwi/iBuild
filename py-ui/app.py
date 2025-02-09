@@ -30,7 +30,7 @@ AI_PRESETS = [
     },
     {
         "text": "16gb RAM | 10gb VRAM",
-        "subtext": "32b IQ4_S",
+        "subtext": "32b IQ2_XS",
         "llm": {
             "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
             "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
@@ -40,7 +40,7 @@ AI_PRESETS = [
     },
     {
         "text": "16gb RAM | 8gb VRAM",
-        "subtext": "32b IQ4_S",
+        "subtext": "32b IQ2_XS",
         "llm": {
             "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
             "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
