@@ -64,11 +64,17 @@ All generated AI output files (like JSON or images) are placed in the `generated
 
 ## Preview
 
-A short demo video is planned.
-Tested with
+- OS: Windows 11
+- CUDA Version: 12.4
+- Minecraft Version: Vanilla 1.21.4
+- Hardware: 32GB DDR5 RAM | rtx 3080 10GB VRAM
+- AI Preset: 10GB VRAM 32b IQ2_XS
+- Generation time: 15 minutes
 
-- 32 GB RAM and an RTX 3080 (10 GB VRAM)
-- Macbook M1 Pro 16GB (lowest preset)
+<p float="left">
+  <img src="https://github.com/user-attachments/assets/96fe33d3-e183-477d-8795-11c37211a484" width="44%"/>
+  <img src="https://github.com/user-attachments/assets/5e234dee-3d76-4274-be7e-a6b7a9afc15d" width="55%" />
+</p>
 
 ## How It Works
 
