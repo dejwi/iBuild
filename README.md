@@ -14,7 +14,7 @@
   - [Python Code & UI](#python-code--ui)
 - [Local Installation](#local-installation)
   - [Windows Requirements](#windows-requirements)
-  - [Mac/Linux Requirements](#maclinux-requirements)
+  - [Mac/Linux Requirements](#mac-requirements)
   - [Install Dependencies](#install-dependencies)
   - [Build the C Library](#build-the-c-library)
 - [Credits](#credits)
@@ -71,9 +71,9 @@ All generated AI output files (like JSON or images) are placed in the `generated
 - AI Preset: 10GB VRAM 32b IQ2_XS
 - Generation time: 15 minutes
 
-<p float="left">
-  <img src="https://github.com/user-attachments/assets/96fe33d3-e183-477d-8795-11c37211a484" width="44%"/>
-  <img src="https://github.com/user-attachments/assets/5e234dee-3d76-4274-be7e-a6b7a9afc15d" width="55%" />
+<p align="left">
+  <img src="https://github.com/user-attachments/assets/96fe33d3-e183-477d-8795-11c37211a484" width="560px"/>
+  <img src="https://github.com/user-attachments/assets/5e234dee-3d76-4274-be7e-a6b7a9afc15d" width="412px" />
 </p>
 
 ## How It Works
