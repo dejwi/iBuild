@@ -47,7 +47,7 @@ These are the built-in presets in the application to match various hardware:
 
 ## Compiled Releases
 
-Pre-compiled executables for Windows or Mac may be found on the [Releases page](https://github.com/placeholder-user/placeholder-repo/releases).  
+Pre-compiled executables for Windows or Mac may be found on the [Releases page](https://github.com/dejwi/iBuild/releases/latest).  
 These compiled releases are packaged using PyInstaller.
 
 - Windows with NVIDIA GPU: make sure the CUDA drivers are installed ([Download CUDA Drivers](https://developer.nvidia.com/cuda-12-4-0-download-archive)).
