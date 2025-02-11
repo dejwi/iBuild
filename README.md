@@ -39,8 +39,10 @@ These are the built-in presets in the application to match various hardware:
    - Manually configure GPU layers, CPU threads, etc.
 2. **16gb RAM | 10gb VRAM** (32b IQ2_XS)
    - Uses 49 GPU layers on DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.
+   - Around 13gb of models to download.
 3. **16gb RAM | 8gb VRAM** (32b IQ2_SX)
    - Uses 39 GPU layers on DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.
+   - Around 13gb of models to download.
 4. **16gb RAM | ±6gb VRAM** (7b Q4_K_M)
    - Uses 8 GPU layers on DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.
    - Mostly bad results.
