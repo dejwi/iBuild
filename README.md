@@ -75,7 +75,7 @@ All generated AI output files (like JSON or images) are placed in the `generated
 
 <p align="left">
   <img src="https://github.com/user-attachments/assets/96fe33d3-e183-477d-8795-11c37211a484" width="560px"/>
-  <img src="https://github.com/user-attachments/assets/5e234dee-3d76-4274-be7e-a6b7a9afc15d" width="412px" />
+  <img src="https://github.com/user-attachments/assets/edbb47b9-2c2b-4d12-868a-01eac82db721" width="412px" />
 </p>
 
 ## How It Works
