@@ -5,7 +5,8 @@ import torch
 
 if torch.cuda.is_available():
     device = "cuda"
-    dtype = torch.bfloat16
+    major, minor = torch.cuda.get_device_capability(torch.cuda.current_device())
+    dtype = torch.bfloat16 if major >= 8 else torch.float16
 elif torch.backends.mps.is_available():
     device = "mps"
     dtype = torch.float16

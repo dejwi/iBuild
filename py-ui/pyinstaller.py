@@ -41,7 +41,14 @@ def compile_c_code():
 
 def run_pyinstaller():
     lib_path = compile_c_code()
-    llama_lib_path = os.path.join(get_package_paths("llama_cpp")[1], "lib")
+
+    if sys.platform.startswith("win"):
+        llama_name = "llama_cpp_cuda"
+    else:
+        llama_name = "llama_cpp"
+
+    llama_lib_path = os.path.join(get_package_paths(llama_name)[1], "lib")
+    llama_add = f"{llama_lib_path}:{llama_name}/lib"
 
     # Clean up previous builds if they exist.
     for folder in ["build", "dist"]:
@@ -56,8 +63,10 @@ def run_pyinstaller():
                 "--onedir",
                 "--windowed",
                 "--noconsole",
+                "--collect-all",
+                llama_name,
                 "--add-data",
-                f"{llama_lib_path}:llama_cpp/lib",
+                llama_add,
                 "--add-data",
                 f"{lib_path}:nbt-editor/build",
                 "--add-data",

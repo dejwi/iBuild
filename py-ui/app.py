@@ -17,7 +17,7 @@ from janus.models import MultiModalityCausalLM
 from nbt_link import insert_build_save
 from prompts import default_dimensions_prompt
 from tqdm.auto import tqdm
-from utils import get_path_exc
+from utils import get_path_exc, device
 
 AI_PRESETS = [
     {
@@ -46,7 +46,7 @@ AI_PRESETS = [
         "llm": {
             "repo_id": "bartowski/DeepSeek-R1-Distill-Qwen-32B-GGUF",
             "filename": "DeepSeek-R1-Distill-Qwen-32B-IQ2_XS.gguf",
-            "cpu_threads": 10,
+            "cpu_threads": 8,
             "gpu_layers": 39,
         },
     },
@@ -63,9 +63,9 @@ AI_PRESETS = [
 ]
 
 default_save_paths = [
-    "%APPDATA%\\.minecraft\\saves",
-    "~/Library/Application Support/minecraft/saves",
-    "~/.minecraft/saves",
+    os.path.join(os.path.expanduser("~"), "AppData/Roaming/.minecraft/saves"),
+    os.path.join(os.path.expanduser("~"), "Library/Application Support/minecraft/saves"),
+    os.path.join(os.path.expanduser("~"), "./.minecraft/saves"),
 ]
 
 
@@ -73,6 +73,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
     def __init__(self, root):
         self.root = root
         root.title("iBuild")
+
+        print(f"device == {device}")
 
         if getattr(sys, "frozen", False):
             # Pyinstaller build
@@ -84,10 +86,6 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         if sys.platform != "darwin":
             sv_ttk.set_theme("dark")
 
-        if torch.cuda.is_available():
-            print("cuda")
-        else:
-            print("no cuda")
         self.create_widgets()
 
         # Model paths
@@ -112,6 +110,10 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         for path in default_save_paths:
             if exists(path):
                 self.update_saves_folder(path, True)
+                messagebox.showinfo(
+                        "Found saves",
+                        f"Found saves folder at {path}",
+                    )
                 break
 
         self.patch_tqm()
@@ -346,6 +348,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
                 "No valid saves",
                 "No valid saves. Unselect inserting into minecraft save if you want to only generate data",
             )
+            self.running = False
+            self.generate_btn.config(state=tk.NORMAL)
             return
 
         try:
@@ -484,8 +488,8 @@ class AIApplication(multimodal.Mixin, llm.Mixin):
         AI_PRESETS[0]["llm"] = {
             "repo_id": repo_id,
             "filename": filename,
-            "cpu_threads": cpu_threads,
-            "gpu_layers": gpu_layers,
+            "cpu_threads": int(cpu_threads),
+            "gpu_layers": int(gpu_layers),
         }
 
         self.llm_model_path = AI_PRESETS[0]["llm"]

@@ -1,10 +1,10 @@
 import gc
 import re
+import importlib
 from typing import Any, Callable
 
-from llama_cpp import Llama
 from prompts import llm_system_prompt
-from utils import get_path_exc
+from utils import get_path_exc, device
 
 
 class Mixin:
@@ -13,7 +13,13 @@ class Mixin:
 
     def run_llm(self, prompt, ai_description, cpu_threads, gpu_layers):
         self.update_progress("Initializng llm", 45)
-        llm = Llama(
+
+        if device == "cuda":
+                llama_lib = importlib.import_module("llama_cpp_cuda")
+        else:
+                llama_lib = importlib.import_module("llama_cpp")
+
+        llm = llama_lib.Llama(
             model_path=self.llm_model_local_path,
             n_ctx=8100,
             n_threads=cpu_threads,

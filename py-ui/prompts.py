@@ -167,14 +167,14 @@ List all block types used (e.g., oak planks, cobblestone, glass).
 **3. Layered Breakdown (Y-Slice Analysis) - REQUIRED:
 Start from Y = 0 (the base layer) and go up level by level.
 Each Y-level must have a detailed breakdown of block placement in an X by Z format.
-Describe how blocks change per height (e.g., walls extend, roofs slope, windows appear).
+Describe how blocks change per height (e.g., walls extend, roofs slope, windows appear if relevant).
 Example Y-slice format:
-Y = 0 (Ground Level): Oak plank flooring, cobblestone walls , doorway at the center.
-Y = 1: Walls continue, windows.
-Y = .. : roof
+Y = 0 (Ground Level): Oak plank flooring, cobblestone walls , doorway at the center (if relevant).
+Y = 1: Walls continue, windows (if relevant).
+Y = .. : roof (if relevant)
 
 4. Key Features & Special Elements:
-Position of windows, doors, balconies, and chimneys.
+Position of windows, doors, balconies, and chimneys (if relevant).
 
 This description must be structured clearly so the build can be fully reconstructed from text alone, focusing primarily on the Y-by-Y breakdown of block placement.
 """

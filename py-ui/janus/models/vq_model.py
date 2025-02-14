@@ -415,7 +415,8 @@ class Upsample(nn.Module):
 
     def forward(self, x):
         if torch.cuda.is_available():
-            dtype = torch.bfloat16
+            major, minor = torch.cuda.get_device_capability(torch.cuda.current_device())
+            dtype = torch.bfloat16 if major >= 8 else torch.float16
         else:
             dtype = torch.float16
 
